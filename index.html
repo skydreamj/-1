@@ -213,10 +213,10 @@
                 <option value="out">출고</option>
               </select>
             </div>
-            <div class="action-row">
+            <div class="action-row" id="scan-action-row">
               <button class="btn-in" onclick="registerScan()">입고 등록</button>
               <button class="btn-out" onclick="registerScanOut()">출고 등록</button>
-              <button class="btn-reset" onclick="resetScan()">↺</button>
+              <button class="btn-reset" onclick="resetScan()">다시 촬영</button>
             </div>
           </div>
         </div>
@@ -355,6 +355,38 @@ function addManual() {
 }
 
 // --- Camera / file ---
+function showScanError(msg, detail) {
+  document.getElementById('scan-loading').style.display = 'none';
+  document.getElementById('cam-btn').style.display = 'none';
+  document.getElementById('scan-result').style.display = 'block';
+  // Show error inside result card with retry button
+  document.getElementById('info-chips').innerHTML = '';
+  document.getElementById('ex-name').value = '';
+  document.getElementById('ex-qty').value = '1';
+  document.getElementById('ex-unit').value = '개';
+  const body = document.querySelector('.result-body');
+  // Insert error banner before fields
+  const existing = document.getElementById('scan-error-banner');
+  if(existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'scan-error-banner';
+  banner.style.cssText = 'background:rgba(255,107,74,0.1);border:0.5px solid rgba(255,107,74,0.3);border-radius:10px;padding:14px;margin-bottom:14px;';
+  banner.innerHTML = `<div style="color:#ff6b4a;font-size:13px;font-weight:500;margin-bottom:4px;">⚠ ${msg}</div><div style="color:#888;font-size:11px;line-height:1.6;">${detail}</div>`;
+  body.insertBefore(banner, body.firstChild);
+}
+
+function extractJSON(raw) {
+  // 1. Try direct parse
+  try { return JSON.parse(raw); } catch(e) {}
+  // 2. Strip markdown fences
+  const stripped = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  try { return JSON.parse(stripped); } catch(e) {}
+  // 3. Extract first {...} block
+  const match = stripped.match(/\{[\s\S]*\}/);
+  if(match) { try { return JSON.parse(match[0]); } catch(e) {} }
+  throw new Error('JSON 블록을 찾을 수 없음: ' + raw.slice(0,120));
+}
+
 function handleFile(e) {
   const file = e.target.files[0];
   if(!file) return;
@@ -369,11 +401,18 @@ function handleFile(e) {
     try {
       const info = await callClaude(b64, mime);
       document.getElementById('scan-loading').style.display = 'none';
+      const errBanner = document.getElementById('scan-error-banner');
+      if(errBanner) errBanner.remove();
       showScanResult(info);
     } catch(err) {
-      document.getElementById('scan-loading').style.display = 'none';
-      document.getElementById('cam-btn').style.display = 'flex';
-      showToast('인식 실패. 다시 시도해 주세요.');
+      const msg = err.message || '';
+      if(msg.includes('API 오류')) {
+        showScanError('API 연결 실패', msg + '<br>잠시 후 다시 시도하거나 네트워크를 확인해 주세요.');
+      } else if(msg.includes('JSON')) {
+        showScanError('인식 결과 파싱 실패', 'AI 응답을 읽지 못했어요. 품목명을 직접 입력하거나 다시 촬영해 주세요.<br><small style="opacity:0.6">' + msg + '</small>');
+      } else {
+        showScanError('인식 실패', msg || '알 수 없는 오류가 발생했어요. 다시 촬영해 주세요.');
+      }
     }
     e.target.value='';
   };
@@ -381,38 +420,60 @@ function handleFile(e) {
 }
 
 async function callClaude(b64, mime) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
-          { type: 'text', text: `이 이미지는 재고 상품의 태그나 라벨 사진입니다. 재고 관련 정보를 추출해서 반드시 아래 JSON 형식으로만 응답하세요. 다른 말은 절대 하지 마세요.
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
+              { type: 'text', text: `You are an inventory tag reader. Look at this product tag or label image carefully and extract all inventory-related information.
 
-{
-  "name": "품목명 (브랜드+제품명 조합, 최대한 구체적으로)",
-  "qty": 수량 숫자 (없으면 1),
-  "unit": "단위 (개/박스/kg/L/매 등)",
-  "price": "가격 (숫자만, 없으면 null)",
-  "barcode": "바코드 또는 품번 (없으면 null)",
-  "expiry": "유통기한 (없으면 null)",
-  "manufacturer": "제조사 (없으면 null)",
-  "origin": "원산지 (없으면 null)",
-  "tags": ["이미지에서 읽힌 주요 키워드들"],
-  "type": "in",
-  "note": "기타 참고 정보"
-}` }
+Respond with ONLY a raw JSON object — no markdown, no explanation, no extra text before or after.
+
+Required format:
+{"name":"품목명(브랜드+제품명, 구체적으로)","qty":수량숫자,"unit":"단위(개/박스/kg/L/매 등)","price":가격숫자또는null,"barcode":"바코드또는품번또는null","expiry":"유통기한또는null","manufacturer":"제조사또는null","origin":"원산지또는null","tags":["키워드1","키워드2"],"type":"in","note":"기타정보"}
+
+Rules:
+- qty must be a number (default 1 if not visible)
+- price must be a number without currency symbols, or null
+- All string values in Korean if possible
+- tags: list of 2-5 key product keywords visible in the image
+- Output ONLY the JSON, nothing else` }
+            ]
+          }
         ]
-      }]
-    })
-  });
+      })
+    });
+  } catch(networkErr) {
+    throw new Error('API 오류: 네트워크 연결을 확인해 주세요. (' + networkErr.message + ')');
+  }
+
+  if(!res.ok) {
+    let errBody = '';
+    try { const j = await res.json(); errBody = j.error?.message || JSON.stringify(j); } catch(e) {}
+    throw new Error(`API 오류 (${res.status}): ${errBody}`);
+  }
+
   const data = await res.json();
-  const txt = data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-  return JSON.parse(txt);
+
+  if(data.error) throw new Error('API 오류: ' + data.error.message);
+
+  if(!data.content || !data.content.length) {
+    throw new Error('API가 빈 응답을 반환했어요.');
+  }
+
+  const raw = data.content.map(c => c.type === 'text' ? c.text : '').join('').trim();
+
+  if(!raw) throw new Error('AI 응답 텍스트가 비어 있어요.');
+
+  return extractJSON(raw);
 }
 
 function showScanResult(info) {
@@ -455,6 +516,8 @@ function registerScanOut() {
 function resetScan() {
   document.getElementById('scan-result').style.display = 'none';
   document.getElementById('cam-btn').style.display = 'flex';
+  const errBanner = document.getElementById('scan-error-banner');
+  if(errBanner) errBanner.remove();
 }
 
 // --- Log ---
