@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#0f0f0f" />
+<title>재고관리</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --green: #22c97a;
+    --green-bg: rgba(34,201,122,0.12);
+    --red: #ff6b4a;
+    --red-bg: rgba(255,107,74,0.12);
+    --blue: #4a9eff;
+    --blue-bg: rgba(74,158,255,0.12);
+    --accent: #22c97a;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; overflow: hidden; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  .header { padding: 16px 20px 12px; border-bottom: 0.5px solid var(--border); background: var(--bg); flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--text2); letter-spacing: 0.04em; }
+  .logo span { color: var(--accent); }
+  .header-date { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .metrics-strip { display: flex; gap: 8px; margin-top: 12px; }
+  .metric-pill { flex: 1; background: var(--surface); border-radius: var(--radius-sm); padding: 10px 10px; border: 0.5px solid var(--border); }
+  .metric-pill .val { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; }
+  .metric-pill .lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+  .metric-pill.green .val { color: var(--green); }
+  .metric-pill.red .val { color: var(--red); }
+
+  /* Main scroll area */
+  .main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Tab nav */
+  .tab-nav { display: flex; padding: 0 20px; gap: 0; border-bottom: 0.5px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+  .tab-btn { flex: 1; padding: 12px 4px; font-size: 12px; font-weight: 500; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: color 0.15s; }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* Scan tab */
+  .scan-area { padding: 20px; }
+  .cam-btn { width: 100%; aspect-ratio: 1.6; background: var(--surface); border: 1.5px dashed var(--border2); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: background 0.15s; position: relative; overflow: hidden; }
+  .cam-btn:active { background: var(--surface2); }
+  .cam-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+  .cam-icon { width: 56px; height: 56px; background: var(--surface2); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--border2); }
+  .cam-icon svg { width: 26px; height: 26px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .cam-label { font-size: 14px; color: var(--text2); }
+  .cam-sub { font-size: 11px; color: var(--text3); }
+
+  /* Preview + result */
+  .result-card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border2); overflow: hidden; margin-bottom: 16px; }
+  .result-img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
+  .result-body { padding: 16px; }
+  .result-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+  .field-group { margin-bottom: 10px; }
+  .field-group label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 4px; }
+  .field-group input, .field-group select { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; outline: none; }
+  .field-group input:focus, .field-group select:focus { border-color: var(--accent); }
+  .field-group select option { background: var(--surface2); }
+  .info-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { font-size: 11px; padding: 3px 10px; border-radius: 99px; background: var(--surface2); color: var(--text2); border: 0.5px solid var(--border); font-family: 'DM Mono', monospace; }
+  .chip.green { background: var(--green-bg); color: var(--green); border-color: rgba(34,201,122,0.2); }
+  .chip.blue { background: var(--blue-bg); color: var(--blue); border-color: rgba(74,158,255,0.2); }
+  .action-row { display: flex; gap: 8px; }
+  .btn-in { flex: 1; padding: 13px; background: var(--green-bg); color: var(--green); border: 1px solid rgba(34,201,122,0.3); border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-out { flex: 1; padding: 13px; background: var(--red-bg); color: var(--red); border: 1px solid rgba(255,107,74,0.3); border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-reset { padding: 13px 14px; background: var(--surface2); color: var(--text2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; }
+  .btn-in:active, .btn-out:active, .btn-reset:active { opacity: 0.7; }
+
+  /* Loading */
+  .loading-card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border2); padding: 28px 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .spinner { width: 36px; height: 36px; border: 2.5px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-txt { font-size: 13px; color: var(--text2); }
+  .loading-sub { font-size: 11px; color: var(--text3); }
+
+  /* Manual tab */
+  .manual-area { padding: 20px; }
+  .section-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 14px; }
+  .manual-form { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 16px; }
+  .manual-form .field-group { margin-bottom: 12px; }
+  .type-toggle { display: flex; gap: 6px; }
+  .type-toggle button { flex: 1; padding: 10px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); }
+  .type-toggle button.active-in { background: var(--green-bg); color: var(--green); border-color: rgba(34,201,122,0.3); }
+  .type-toggle button.active-out { background: var(--red-bg); color: var(--red); border-color: rgba(255,107,74,0.3); }
+  .submit-btn { width: 100%; padding: 14px; background: var(--accent); color: #000; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px; letter-spacing: 0.02em; }
+  .submit-btn:active { opacity: 0.8; }
+
+  /* Log tab */
+  .log-area { padding: 16px 20px; }
+  .filter-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .filter-btn { padding: 7px 14px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 0.5px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; }
+  .filter-btn.active { background: var(--surface); color: var(--text); border-color: var(--border2); }
+  .log-search { width: 100%; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13px; color: var(--text); outline: none; margin-bottom: 12px; font-family: 'Noto Sans KR', sans-serif; }
+  .log-search:focus { border-color: var(--accent); }
+  .log-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 0.5px solid var(--border); }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .log-dot.in { background: var(--green); }
+  .log-dot.out { background: var(--red); }
+  .log-info { flex: 1; min-width: 0; }
+  .log-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log-meta { font-size: 11px; color: var(--text2); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .log-qty { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; }
+  .log-qty.in { color: var(--green); }
+  .log-qty.out { color: var(--red); }
+  .badge-scan { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--blue-bg); color: var(--blue); font-family: 'DM Mono', monospace; }
+  .empty-msg { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 13px; }
+
+  /* Stock tab */
+  .stock-area { padding: 16px 20px; }
+  .stock-item { padding: 14px 0; border-bottom: 0.5px solid var(--border); }
+  .stock-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .stock-name { font-size: 14px; font-weight: 500; }
+  .stock-qty { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; }
+  .stock-qty.low { color: var(--red); }
+  .stock-bar { height: 3px; background: var(--surface2); border-radius: 99px; margin-top: 8px; overflow: hidden; }
+  .stock-bar-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.4s ease; }
+  .stock-bar-fill.low { background: var(--red); }
+  .stock-sub { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface); border: 0.5px solid var(--border2); border-radius: 99px; padding: 10px 20px; font-size: 13px; color: var(--text); opacity: 0; transition: all 0.25s ease; z-index: 999; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.green { border-color: rgba(34,201,122,0.4); color: var(--green); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">STOCK<span>·</span>MGR</div>
+      <div class="header-date" id="header-date"></div>
+    </div>
+    <div class="metrics-strip">
+      <div class="metric-pill green"><div class="val" id="m-in">0</div><div class="lbl">총 입고</div></div>
+      <div class="metric-pill red"><div class="val" id="m-out">0</div><div class="lbl">총 출고</div></div>
+      <div class="metric-pill"><div class="val" id="m-items">0</div><div class="lbl">품목 수</div></div>
+      <div class="metric-pill"><div class="val" id="m-scan">0</div><div class="lbl">스캔</div></div>
+    </div>
+  </div>
+
+  <!-- Scrollable main -->
+  <div class="main">
+    <!-- Tab nav -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('scan',this)">📷 스캔</button>
+      <button class="tab-btn" onclick="switchTab('manual',this)">✏️ 입력</button>
+      <button class="tab-btn" onclick="switchTab('log',this)">📋 내역</button>
+      <button class="tab-btn" onclick="switchTab('stock',this)">📦 재고</button>
+    </div>
+
+    <!-- SCAN TAB -->
+    <div id="tab-scan" class="scan-area">
+      <label class="cam-btn" id="cam-btn">
+        <input type="file" accept="image/*" capture="environment" onchange="handleFile(event)" id="file-input" />
+        <div class="cam-icon">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <div class="cam-label">카메라로 태그 촬영</div>
+        <div class="cam-sub">갤러리에서 선택도 가능해요</div>
+      </label>
+
+      <div id="scan-loading" style="display:none; margin-top:16px;">
+        <div class="loading-card">
+          <div class="spinner"></div>
+          <div class="loading-txt">AI가 태그를 분석 중이에요</div>
+          <div class="loading-sub">품목명, 수량, 바코드 등을 읽고 있어요...</div>
+        </div>
+      </div>
+
+      <div id="scan-result" style="display:none; margin-top:16px;">
+        <div class="result-card">
+          <img id="preview-img" class="result-img" src="" alt="태그 이미지" />
+          <div class="result-body">
+            <div class="result-label">AI 인식 결과</div>
+            <div id="info-chips" class="info-chips"></div>
+            <div class="field-group">
+              <label>품목명</label>
+              <input type="text" id="ex-name" placeholder="품목명" />
+            </div>
+            <div style="display:flex; gap:8px;">
+              <div class="field-group" style="flex:1;">
+                <label>수량</label>
+                <input type="number" id="ex-qty" min="1" value="1" />
+              </div>
+              <div class="field-group" style="flex:1;">
+                <label>단위</label>
+                <input type="text" id="ex-unit" value="개" />
+              </div>
+            </div>
+            <div class="field-group">
+              <label>구분</label>
+              <select id="ex-type">
+                <option value="in">입고</option>
+                <option value="out">출고</option>
+              </select>
+            </div>
+            <div class="action-row">
+              <button class="btn-in" onclick="registerScan()">입고 등록</button>
+              <button class="btn-out" onclick="registerScanOut()">출고 등록</button>
+              <button class="btn-reset" onclick="resetScan()">↺</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANUAL TAB -->
+    <div id="tab-manual" class="manual-area" style="display:none;">
+      <div class="section-label">직접 입력</div>
+      <div class="manual-form">
+        <div class="field-group">
+          <label>품목명</label>
+          <input type="text" id="m-name" placeholder="품목명을 입력하세요" />
+        </div>
+        <div style="display:flex; gap:8px;">
+          <div class="field-group" style="flex:2;">
+            <label>수량</label>
+            <input type="number" id="m-qty" min="1" placeholder="수량" />
+          </div>
+          <div class="field-group" style="flex:1;">
+            <label>단위</label>
+            <input type="text" id="m-unit" value="개" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label>구분</label>
+          <div class="type-toggle">
+            <button id="toggle-in" class="active-in" onclick="setType('in')">입고</button>
+            <button id="toggle-out" onclick="setType('out')">출고</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>메모 (선택)</label>
+          <input type="text" id="m-note" placeholder="메모" />
+        </div>
+        <button class="submit-btn" onclick="addManual()">등록하기</button>
+      </div>
+    </div>
+
+    <!-- LOG TAB -->
+    <div id="tab-log" class="log-area" style="display:none;">
+      <input type="text" class="log-search" id="log-search" placeholder="품목명 검색..." oninput="renderLog()" />
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="setFilter('',this)">전체</button>
+        <button class="filter-btn" onclick="setFilter('in',this)">입고</button>
+        <button class="filter-btn" onclick="setFilter('out',this)">출고</button>
+        <button class="filter-btn" onclick="setFilter('scan',this)">스캔</button>
+      </div>
+      <div id="log-list"></div>
+    </div>
+
+    <!-- STOCK TAB -->
+    <div id="tab-stock" class="stock-area" style="display:none;">
+      <div class="section-label">현재 재고 현황</div>
+      <div id="stock-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'stockmgr_records_v1';
+let records = [];
+let filterType = '';
+let manualType = 'in';
+
+function loadRecords() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) records = JSON.parse(saved);
+    else records = [
+      { date: '2025-04-20', type: 'in', name: '볼펜 (흑색)', qty: 100, unit: '개', source: 'manual', note: '' },
+      { date: '2025-04-22', type: 'out', name: '볼펜 (흑색)', qty: 30, unit: '개', source: 'manual', note: '' },
+      { date: '2025-04-21', type: 'in', name: 'A4 용지', qty: 500, unit: '매', source: 'manual', note: '' },
+      { date: '2025-04-23', type: 'out', name: 'A4 용지', qty: 120, unit: '매', source: 'manual', note: '' },
+      { date: '2025-04-24', type: 'in', name: '포스트잇', qty: 50, unit: '개', source: 'manual', note: '' },
+    ];
+  } catch(e) { records = []; }
+}
+
+function saveRecords() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch(e) {}
+}
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+function setHeaderDate() {
+  const d = new Date();
+  document.getElementById('header-date').textContent =
+    `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function updateMetrics() {
+  const totalIn = records.filter(r=>r.type==='in').reduce((s,r)=>s+r.qty,0);
+  const totalOut = records.filter(r=>r.type==='out').reduce((s,r)=>s+r.qty,0);
+  const items = new Set(records.map(r=>r.name)).size;
+  const scanned = records.filter(r=>r.source==='scan').length;
+  document.getElementById('m-in').textContent = totalIn.toLocaleString();
+  document.getElementById('m-out').textContent = totalOut.toLocaleString();
+  document.getElementById('m-items').textContent = items;
+  document.getElementById('m-scan').textContent = scanned;
+}
+
+// --- Tab switching ---
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  ['scan','manual','log','stock'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===tab?'':'none';
+  });
+  if(tab==='log') renderLog();
+  if(tab==='stock') renderStock();
+}
+
+// --- Manual entry ---
+function setType(t) {
+  manualType = t;
+  document.getElementById('toggle-in').className = t==='in'?'active-in':'';
+  document.getElementById('toggle-out').className = t==='out'?'active-out':'';
+}
+
+function addManual() {
+  const name = document.getElementById('m-name').value.trim();
+  const qty = parseInt(document.getElementById('m-qty').value);
+  const unit = document.getElementById('m-unit').value.trim()||'개';
+  const note = document.getElementById('m-note').value.trim();
+  if(!name||!qty||qty<1) { showToast('품목명과 수량을 입력해 주세요'); return; }
+  records.unshift({ date: today(), type: manualType, name, qty, unit, source: 'manual', note });
+  saveRecords();
+  updateMetrics();
+  document.getElementById('m-name').value='';
+  document.getElementById('m-qty').value='';
+  document.getElementById('m-note').value='';
+  showToast(`✓ ${name} ${qty}${unit} ${manualType==='in'?'입고':'출고'} 완료`, 'green');
+}
+
+// --- Camera / file ---
+function handleFile(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const b64 = ev.target.result.split(',')[1];
+    const mime = file.type || 'image/jpeg';
+    document.getElementById('cam-btn').style.display = 'none';
+    document.getElementById('scan-result').style.display = 'none';
+    document.getElementById('scan-loading').style.display = 'block';
+    document.getElementById('preview-img').src = ev.target.result;
+    try {
+      const info = await callClaude(b64, mime);
+      document.getElementById('scan-loading').style.display = 'none';
+      showScanResult(info);
+    } catch(err) {
+      document.getElementById('scan-loading').style.display = 'none';
+      document.getElementById('cam-btn').style.display = 'flex';
+      showToast('인식 실패. 다시 시도해 주세요.');
+    }
+    e.target.value='';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function callClaude(b64, mime) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
+          { type: 'text', text: `이 이미지는 재고 상품의 태그나 라벨 사진입니다. 재고 관련 정보를 추출해서 반드시 아래 JSON 형식으로만 응답하세요. 다른 말은 절대 하지 마세요.
+
+{
+  "name": "품목명 (브랜드+제품명 조합, 최대한 구체적으로)",
+  "qty": 수량 숫자 (없으면 1),
+  "unit": "단위 (개/박스/kg/L/매 등)",
+  "price": "가격 (숫자만, 없으면 null)",
+  "barcode": "바코드 또는 품번 (없으면 null)",
+  "expiry": "유통기한 (없으면 null)",
+  "manufacturer": "제조사 (없으면 null)",
+  "origin": "원산지 (없으면 null)",
+  "tags": ["이미지에서 읽힌 주요 키워드들"],
+  "type": "in",
+  "note": "기타 참고 정보"
+}` }
+        ]
+      }]
+    })
+  });
+  const data = await res.json();
+  const txt = data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+  return JSON.parse(txt);
+}
+
+function showScanResult(info) {
+  document.getElementById('ex-name').value = info.name||'';
+  document.getElementById('ex-qty').value = info.qty||1;
+  document.getElementById('ex-unit').value = info.unit||'개';
+  document.getElementById('ex-type').value = info.type||'in';
+
+  const chips = [];
+  if(info.price) chips.push(`<span class="chip green">₩${Number(info.price).toLocaleString()}</span>`);
+  if(info.barcode) chips.push(`<span class="chip blue">${info.barcode}</span>`);
+  if(info.expiry) chips.push(`<span class="chip">유통: ${info.expiry}</span>`);
+  if(info.manufacturer) chips.push(`<span class="chip">${info.manufacturer}</span>`);
+  if(info.origin) chips.push(`<span class="chip">${info.origin}</span>`);
+  if(info.tags) info.tags.slice(0,4).forEach(t=>chips.push(`<span class="chip">${t}</span>`));
+  document.getElementById('info-chips').innerHTML = chips.join('');
+
+  document.getElementById('scan-result').style.display = 'block';
+  window._scanNote = info.note||'';
+}
+
+function registerScan() {
+  const name = document.getElementById('ex-name').value.trim();
+  const qty = parseInt(document.getElementById('ex-qty').value);
+  const unit = document.getElementById('ex-unit').value.trim()||'개';
+  const type = document.getElementById('ex-type').value;
+  if(!name||!qty) return;
+  records.unshift({ date: today(), type, name, qty, unit, source: 'scan', note: window._scanNote||'' });
+  saveRecords();
+  updateMetrics();
+  resetScan();
+  showToast(`✓ ${name} ${qty}${unit} ${type==='in'?'입고':'출고'} 완료`, 'green');
+}
+
+function registerScanOut() {
+  document.getElementById('ex-type').value = 'out';
+  registerScan();
+}
+
+function resetScan() {
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('cam-btn').style.display = 'flex';
+}
+
+// --- Log ---
+function setFilter(f, el) {
+  filterType = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderLog();
+}
+
+function renderLog() {
+  const q = (document.getElementById('log-search')||{}).value||'';
+  let filtered = records.filter(r=>{
+    if(q && !r.name.includes(q)) return false;
+    if(filterType==='in') return r.type==='in';
+    if(filterType==='out') return r.type==='out';
+    if(filterType==='scan') return r.source==='scan';
+    return true;
+  });
+  const list = document.getElementById('log-list');
+  if(!filtered.length) { list.innerHTML='<div class="empty-msg">내역이 없습니다</div>'; return; }
+  list.innerHTML = filtered.map(r=>`
+    <div class="log-item">
+      <div class="log-dot ${r.type}"></div>
+      <div class="log-info">
+        <div class="log-name">${r.name} ${r.source==='scan'?'<span class="badge-scan">스캔</span>':''}</div>
+        <div class="log-meta">${r.date}${r.note?' · '+r.note:''}</div>
+      </div>
+      <div class="log-qty ${r.type}">${r.type==='out'?'-':'+'} ${r.qty.toLocaleString()}${r.unit||''}</div>
+    </div>`).join('');
+}
+
+// --- Stock ---
+function renderStock() {
+  const stock={}, totalIn={}, units={};
+  records.forEach(r=>{
+    if(!stock[r.name]){stock[r.name]=0;totalIn[r.name]=0;units[r.name]=r.unit||'개';}
+    if(r.type==='in'){stock[r.name]+=r.qty;totalIn[r.name]+=r.qty;}
+    else stock[r.name]-=r.qty;
+  });
+  const items = Object.keys(stock).sort((a,b)=>stock[b]-stock[a]);
+  const list = document.getElementById('stock-list');
+  if(!items.length){list.innerHTML='<div class="empty-msg">재고 없음</div>';return;}
+  list.innerHTML = items.map(k=>{
+    const pct = totalIn[k]>0 ? Math.round(stock[k]/totalIn[k]*100) : 0;
+    const low = pct<30;
+    return `<div class="stock-item">
+      <div class="stock-row">
+        <div class="stock-name">${k}</div>
+        <div class="stock-qty${low?' low':''}"> ${stock[k].toLocaleString()} ${units[k]}</div>
+      </div>
+      <div class="stock-sub">누적 입고 ${totalIn[k].toLocaleString()} ${units[k]} · 잔여 ${pct}%${low?' · ⚠ 재고 부족':''}</div>
+      <div class="stock-bar"><div class="stock-bar-fill${low?' low':''}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// --- Toast ---
+function showToast(msg, cls='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (cls?' '+cls:'');
+  setTimeout(()=>{ t.className='toast'; }, 2200);
+}
+
+// Init
+loadRecords();
+setHeaderDate();
+updateMetrics();
+</script>
+</body>
+</html>
