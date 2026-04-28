@@ -157,7 +157,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
   <div class="hdr">
     <div class="hdr-top">
       <div class="brand"><b>INV</b>·PRO</div>
-      <div style="display:flex;align-items:center;gap:8px;"><div class="hdr-date" id="hdr-date"></div><button onclick="showApiKeyModal()" style="font-size:10px;padding:4px 8px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;font-family:var(--mono);">API키</button></div>
+      <div class="hdr-date" id="hdr-date"></div>
     </div>
     <div class="kpis">
       <div class="kpi g"><div class="kpi-v" id="k-in">0</div><div class="kpi-l">입고</div></div>
@@ -332,26 +332,6 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 </div>
 
 
-<!-- API KEY MODAL -->
-<div class="overlay" id="apikey-modal" style="display:none">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-hdr">
-      <div class="modal-title">🔑 Gemini API 키 설정</div>
-    </div>
-    <div style="font-size:13px;color:#888;line-height:1.7;margin-bottom:16px;">
-      Google Gemini API는 <b style="color:#00e07a">무료</b>로 사용할 수 있어요.<br>
-      아래 링크에서 API 키를 발급받으세요:<br>
-      <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#3d9eff;font-size:12px;">aistudio.google.com/apikey</a>
-    </div>
-    <div class="fg">
-      <label>API 키 붙여넣기</label>
-      <input id="apikey-input" type="password" placeholder="AIza..." style="font-family:monospace;font-size:13px;letter-spacing:0.05em;"/>
-    </div>
-    <div style="font-size:11px;color:#444;margin-bottom:14px;">키는 이 기기에만 저장되며 외부로 전송되지 않습니다.</div>
-    <button class="submit-btn" onclick="saveApiKey()">저장하고 스캔 시작</button>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -367,8 +347,8 @@ let mType = 'in';
 let editId = null;
 
 
-// ── GEMINI API KEY ──
-let GEMINI_KEY = localStorage.getItem('gemini_api_key') || '';
+// ── Worker URL (Cloudflare) ──
+const WORKER_URL = 'https://lingering-moon-8748.skydreamj.workers.dev';
 
 function load() {
   try { const s = localStorage.getItem(SK); if(s) records = JSON.parse(s); } catch(e){}
@@ -492,70 +472,49 @@ function extractJSON(raw) {
 }
 
 async function callAI(b64, mime) {
-  if(!GEMINI_KEY) {
-    showApiKeyModal();
-    throw new Error('API 키를 먼저 입력해 주세요.');
-  }
-  const prompt = `You are an inventory tag OCR reader. Analyze this product tag/label image and extract inventory information. Respond ONLY with a raw JSON object, no markdown, no extra text.
+  const prompt = `You are an inventory tag OCR reader for a warehouse system.
+Analyze this product tag/label image carefully and extract all visible information.
+Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
 
-{"name":"product name in Korean (brand+model, specific)","qty":quantity_or_1,"unit":"unit in Korean (개/박스/kg/L/매/롤)","date":"YYYY-MM-DD if visible else ${new Date().toISOString().slice(0,10)}","partner":"supplier name if visible else null","spec":"size/spec if visible else null","weight":"weight with unit if visible else null","price":price_number_or_null,"barcode":"barcode or code if visible else null","expiry":"expiry date if visible else null","tags":["keyword1","keyword2"],"type":"in","note":"other info"}`;
+{"name":"품목명 (브랜드+제품명, 구체적으로)","qty":수량숫자또는1,"unit":"단위(개/박스/kg/L/매/롤)","date":"YYYY-MM-DD 보이면 해당날짜 없으면 ${new Date().toISOString().slice(0,10)}","partner":"거래처명 보이면 입력 없으면 null","spec":"규격/사이즈 보이면 입력 없으면 null","weight":"중량 단위포함 보이면 입력 없으면 null","price":가격숫자또는null,"barcode":"바코드또는품번 없으면 null","expiry":"유통기한 없으면 null","tags":["키워드1","키워드2"],"type":"in","note":"기타정보"}`;
 
   let res;
   try {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: mime, data: b64 } },
-              { text: prompt }
-            ]
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
-        })
-      }
-    );
+    res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+            { type: 'text', text: prompt }
+          ]
+        }],
+        max_tokens: 1024,
+        temperature: 0.1
+      })
+    });
   } catch(ne) {
-    throw new Error('네트워크 오류: 인터넷 연결을 확인해 주세요. ('+ne.message+')');
+    throw new Error('네트워크 오류: 인터넷 연결을 확인해 주세요. (' + ne.message + ')');
   }
 
   if(!res.ok) {
     let em = '';
-    try {
-      const j = await res.json();
-      em = j.error?.message || JSON.stringify(j);
-      if(res.status === 400 && em.includes('API_KEY')) {
-        GEMINI_KEY = '';
-        localStorage.removeItem('gemini_api_key');
-        showApiKeyModal();
-      }
-    } catch(e) {}
+    try { const j = await res.json(); em = j.error?.message || JSON.stringify(j); } catch(e) {}
     throw new Error(`API 오류 (${res.status}): ${em}`);
   }
 
   const data = await res.json();
-  if(data.error) throw new Error('Gemini 오류: ' + data.error.message);
+  if(data.error) throw new Error('오류: ' + data.error.message);
 
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const raw = data.choices?.[0]?.message?.content || '';
   if(!raw) throw new Error('AI 응답이 비어 있어요.');
   return extractJSON(raw);
 }
 
-function showApiKeyModal() {
-  document.getElementById('apikey-modal').style.display = 'flex';
-}
 
-function saveApiKey() {
-  const k = document.getElementById('apikey-input').value.trim();
-  if(!k) { toast('API 키를 입력해 주세요'); return; }
-  GEMINI_KEY = k;
-  localStorage.setItem('gemini_api_key', k);
-  document.getElementById('apikey-modal').style.display = 'none';
-  toast('API 키가 저장되었어요 ✓', 'g');
-}
 
 function showRes(info) {
   document.getElementById('s-name').value = info.name||'';
@@ -828,13 +787,6 @@ function init() {
   document.getElementById('s-date') && (document.getElementById('s-date').value = today());
 }
 init();
-if(!GEMINI_KEY) {
-  // Show hint on scan tab
-  const hint = document.createElement('div');
-  hint.style.cssText = 'background:rgba(245,196,0,0.08);border:0.5px solid rgba(245,196,0,0.25);border-radius:10px;padding:12px 14px;margin-top:0;font-size:12px;color:#f5c400;line-height:1.6;';
-  hint.innerHTML = '⚠ 스캔 기능을 사용하려면 <b>Gemini API 키</b>가 필요해요.<br>우측 상단 <b>API키</b> 버튼을 눌러 무료 키를 등록하세요.';
-  document.getElementById('pg-scan').insertBefore(hint, document.getElementById('pg-scan').firstChild);
-}
 </script>
 </body>
 </html>
