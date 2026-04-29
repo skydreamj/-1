@@ -705,30 +705,34 @@ Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
 
 
 
-function showRes(info) {
-  document.getElementById('s-name').value = info.name||'ARCONIC ALUMINUM';
-  document.getElementById('s-date').value = today();
-  document.getElementById('s-order').value = info.order||'';
-  document.getElementById('s-lot').value = info.lot || (!info.lot && info.batch ? info.batch : '');
+function setVal(id, val) {
+  var el = document.getElementById(id);
+  if(el) el.value = val;
+}
 
-  document.getElementById('s-partner').value = info.partner||'';
-  document.getElementById('s-spec').value = info.spec||'';
-  document.getElementById('s-qty').value = info.qty||1;
-  document.getElementById('s-netweight').value = info.netweight||'';
-  const wu = (info.weightunit||'KG').toUpperCase();
-  document.getElementById('s-weightunit').value = wu.includes('LBS') ? 'LBS' : 'KG';
-  const units = ['PIECES','SHEETS','COILS','ROLLS','EA'];
-  const rawUnit = (info.unit||'PIECES').toUpperCase();
-  const matchedUnit = units.find(u => rawUnit.includes(u)) || 'PIECES';
-  document.getElementById('s-unit').value = matchedUnit;
-  // Auto-calc qty if no qty but has netweight (ASBW case: netweight / 2.18714, ceiling)
-  const sqty = parseInt(document.getElementById('s-qty').value);
-  const snw = parseFloat(document.getElementById('s-netweight').value);
+function showRes(info) {
+  setVal('s-name', info.name||'ARCONIC ALUMINUM');
+  setVal('s-date', today());
+  setVal('s-order', info.order||'');
+  setVal('s-lot', info.lot || (!info.lot && info.batch ? info.batch : ''));
+  setVal('s-partner', info.partner||'');
+  setVal('s-spec', info.spec||'');
+  setVal('s-qty', info.qty||1);
+  setVal('s-netweight', info.netweight||'');
+  var wu = (info.weightunit||'KG').toUpperCase();
+  setVal('s-weightunit', wu.includes('LBS') ? 'LBS' : 'KG');
+  var units = ['PIECES','SHEETS','COILS','ROLLS','EA'];
+  var rawUnit = (info.unit||'PIECES').toUpperCase();
+  var matchedUnit = units.find(u => rawUnit.includes(u)) || 'PIECES';
+  setVal('s-unit', matchedUnit);
+  // Auto-calc qty if no qty but has netweight (ASBW: netweight / 2.18714, ceiling)
+  var sqty = parseInt((document.getElementById('s-qty')||{}).value||'1');
+  var snw = parseFloat((document.getElementById('s-netweight')||{}).value||'0');
   if ((!sqty || sqty <= 1) && snw > 0) {
-    document.getElementById('s-qty').value = Math.ceil(snw / 2.18714);
+    setVal('s-qty', Math.ceil(snw / 2.18714));
   }
-  document.getElementById('s-type').value = info.type||'in';
-  document.getElementById('s-note').value = info.note||'';
+  setVal('s-type', info.type||'in');
+  setVal('s-note', info.note||'');
 
   const chips = [];
   if(info.price) chips.push(`<span class="chip g">₩${Number(info.price).toLocaleString()}</span>`);
