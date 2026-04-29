@@ -492,8 +492,8 @@ function updateKPIs() {
   const ti = records.filter(r=>r.type==='in').reduce((s,r)=>s+r.qty,0);
   const to = records.filter(r=>r.type==='out').reduce((s,r)=>s+r.qty,0);
   const items = new Set(records.map(r=>r.name)).size;
-  document.getElementById('k-in').textContent = ti.toLocaleString();
-  document.getElementById('k-out').textContent = to.toLocaleString();
+  document.getElementById('k-in').textContent = (ti||0).toLocaleString();
+  document.getElementById('k-out').textContent = (to||0).toLocaleString();
   document.getElementById('k-items').textContent = items;
   document.getElementById('k-total').textContent = records.length;
 }
@@ -526,7 +526,7 @@ function getStockList() {
     const key = r.lot ? `LOT:${r.lot}` : r.batch ? `BATCH:${r.batch}` : `${r.name}`;
     if (!map[key]) map[key] = { name: r.name, lot: r.lot||'', batch: r.batch||'', partner: r.partner||'', order: r.order||'', spec: r.spec||'', netweight: r.netweight||'', weightunit: r.weightunit||'KG', unit: r.unit||'PIECES', qty: 0 };
     if (r.type === 'in') map[key].qty += r.qty;
-    else map[key].qty -= r.qty;
+    else map[key].qty -= Number(r.qty)||0;
   });
   return Object.entries(map).filter(([k,v]) => v.qty > 0).map(([k,v]) => ({key:k, ...v}));
 }
@@ -536,7 +536,7 @@ function updateStockSelect() {
   const list = getStockList();
   sel.innerHTML = '<option value="">-- 재고에서 선택 --</option>';
   list.forEach(s => {
-    const label = `${s.name} · ${s.lot?'LOT:'+s.lot:s.batch?'BATCH:'+s.batch:''} · 잔여 ${s.qty.toLocaleString()} ${s.unit}`;
+    const label = `${s.name} · ${s.lot?'LOT:'+s.lot:s.batch?'BATCH:'+s.batch:''} · 잔여 ${(s.qty||0).toLocaleString()} ${s.unit}`;
     sel.innerHTML += `<option value="${s.key}">${label}</option>`;
   });
 }
@@ -557,7 +557,7 @@ function fillFromStock(key) {
   if(mwu) mwu.value = (s.weightunit||'KG');
   document.getElementById('m-unit').value = s.unit.toUpperCase().includes('KG') ? 'KG' : 'PIECES';
   // Set max qty hint
-  document.getElementById('m-qty').placeholder = `최대 ${s.qty.toLocaleString()} ${s.unit}`;
+  document.getElementById('m-qty').placeholder = `최대 ${(s.qty||0).toLocaleString()} ${s.unit}`;
   document.getElementById('m-qty').max = s.qty;
 }
 
@@ -812,7 +812,7 @@ function renderLog() {
       <div class="log-body">
         <div class="log-top">
           <div class="log-name">${r.name}</div>
-          <div class="log-qty ${r.type}">${r.type==='in'?'+':'-'}${r.qty.toLocaleString()}${r.unit}</div>
+          <div class="log-qty ${r.type}">${r.type==='in'?'+':'-'}${(r.qty||0).toLocaleString()}${r.unit}</div>
         </div>
         <div class="log-meta">${r.id} · ${r.date}${r.lot?' · LOT/BATCH:'+r.lot:''}${r.order?' · '+r.order:''}${r.partner?' · '+r.partner:''}</div>
         <div class="log-meta" style="font-size:10px;color:var(--t3);">${r.spec?' '+r.spec:''}${r.netweight?' · NET '+r.netweight+' '+(r.weightunit||'KG'):r.weight?' · '+r.weight:''}</div>
@@ -928,9 +928,9 @@ function renderStock() {
     return `<div class="stock-item">
       <div class="stock-row">
         <div class="stock-name">${k}</div>
-        <div class="stock-qty${low?' low':''}">${stock[k].toLocaleString()} ${units[k]}</div>
+        <div class="stock-qty${low?' low':''}">${(stock[k]||0).toLocaleString()} ${units[k]}</div>
       </div>
-      <div class="stock-sub">누적입고 ${tin[k].toLocaleString()} · 잔여 ${pct}%${low?' · ⚠ 부족':''}${partners[k]?' · '+partners[k]:''}</div>
+      <div class="stock-sub">누적입고 ${(tin[k]||0).toLocaleString()} · 잔여 ${pct}%${low?' · ⚠ 부족':''}${partners[k]?' · '+partners[k]:''}</div>
       <div class="stock-bar"><div class="stock-fill${low?' low':''}" style="width:${Math.max(pct,2)}%"></div></div>
     </div>`;
   }).join('');
