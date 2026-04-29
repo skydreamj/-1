@@ -462,7 +462,7 @@ async function syncFromSheets() {
     setHdrDate();
     renderLog();
     renderStock();
-    toast('\u2713 동기화 완료 · ' + new Date().toLocaleTimeString('ko-KR'), 'g');
+    toast('✓ 동기화 완료 · ' + new Date().toLocaleTimeString('ko-KR'), 'g');
   } catch(e) {
     setHdrDate();
     toast('동기화 실패: ' + e.message);
@@ -499,9 +499,9 @@ function today() { return new Date().toISOString().slice(0,10); }
 
 function setHdrDate() {
   const d = new Date();
-  const date = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-  const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-  document.getElementById('hdr-date').textContent = `${date} ${time}`;
+  var date = d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+  var time = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+  document.getElementById('hdr-date').textContent = date+' '+time;
 }
 
 function updateKPIs() {
@@ -539,7 +539,7 @@ function getStockList() {
   // Group by LOT NR or BATCH, calc remaining qty
   const map = {};
   records.forEach(r => {
-    const key = r.lot ? `LOT:${r.lot}` : r.batch ? `BATCH:${r.batch}` : `${r.name}`;
+    var key = r.lot ? 'LOT:'+r.lot : r.batch ? 'BATCH:'+r.batch : r.name;
     if (!map[key]) map[key] = { name: r.name, lot: r.lot||'', batch: r.batch||'', partner: r.partner||'', order: r.order||'', spec: r.spec||'', netweight: r.netweight||'', weightunit: r.weightunit||'KG', unit: r.unit||'PIECES', qty: 0 };
     if (r.type === 'in') map[key].qty += r.qty;
     else map[key].qty -= Number(r.qty)||0;
@@ -552,8 +552,8 @@ function updateStockSelect() {
   const list = getStockList();
   sel.innerHTML = '<option value="">-- 재고에서 선택 --</option>';
   list.forEach(s => {
-    const label = `${s.name} · ${s.lot?'LOT:'+s.lot:s.batch?'BATCH:'+s.batch:''} · 잔여 ${(s.qty||0).toLocaleString()} ${s.unit}`;
-    sel.innerHTML += `<option value="${s.key}">${label}</option>`;
+      var label = s.name+' · '+(s.lot?'LOT:'+s.lot:s.batch?'BATCH:'+s.batch:'')+' · 잔여 '+(Number(s.qty)||0).toLocaleString()+' '+s.unit;
+      sel.innerHTML += '<option value="'+s.key+'">'+label+'</option>';
   });
 }
 
@@ -572,7 +572,7 @@ function fillFromStock(key) {
   if(mwu) mwu.value = (s.weightunit||'KG');
   document.getElementById('m-unit').value = s.unit.toUpperCase().includes('KG') ? 'KG' : 'PIECES';
   // Set max qty hint
-  document.getElementById('m-qty').placeholder = `최대 ${(s.qty||0).toLocaleString()} ${s.unit}`;
+      document.getElementById('m-qty').placeholder = '최대 '+(Number(s.qty)||0).toLocaleString()+' '+s.unit;
   document.getElementById('m-qty').max = s.qty;
 }
 
@@ -621,7 +621,7 @@ function addManual() {
   renderStock();
   ['m-name','m-partner','m-order','m-lot','m-spec','m-netweight','m-qty','m-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-unit').value='PIECES';
-  toast(`✓ ${name} ${qty}개 ${mType==='in'?'입고':'출고'} 등록 완료`,'g');
+  toast('✓ '+name+' '+qty+'개 '+(mType==='in'?'입고':'출고')+' 등록 완료','g');
 }
 
 // ── SCAN ──
@@ -679,7 +679,7 @@ Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
         messages: [{
           role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+              { type: 'image_url', image_url: { url: 'data:'+mime+';base64,'+b64 } },
             { type: 'text', text: prompt }
           ]
         }],
@@ -694,7 +694,7 @@ Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
   if(!res.ok) {
     let em = '';
     try { const j = await res.json(); em = j.error?.message || JSON.stringify(j); } catch(e) {}
-    throw new Error(`API 오류 (${res.status}): ${em}`);
+    throw new Error('API 오류 ('+res.status+'): '+em);
   }
 
   const data = await res.json();
@@ -737,17 +737,17 @@ function showRes(info) {
   setVal('s-note', info.note||'');
 
   const chips = [];
-  if(info.price) chips.push(`<span class="chip g">₩${Number(info.price).toLocaleString()}</span>`);
-  if(info.barcode) chips.push(`<span class="chip b">${info.barcode}</span>`);
-  if(info.expiry) chips.push(`<span class="chip y">유통: ${info.expiry}</span>`);
-  if(info.order) chips.push(`<span class="chip b">Order: ${info.order}</span>`);
-  if(info.lot) chips.push(`<span class="chip g">LOT: ${info.lot}</span>`);
-  if(info.batch) chips.push(`<span class="chip y">BATCH: ${info.batch}</span>`);
-  if(info.partner) chips.push(`<span class="chip">거래처: ${info.partner}</span>`);
-  if(info.netweight) chips.push(`<span class="chip g">NET: ${info.netweight} ${info.weightunit||'KG'}</span>`);
-  if(info.spec) chips.push(`<span class="chip">규격: ${info.spec}</span>`);
-  if(info.weight) chips.push(`<span class="chip">중량: ${info.weight}</span>`);
-  (info.tags||[]).slice(0,3).forEach(t=>chips.push(`<span class="chip">${t}</span>`));
+  if(info.price) chips.push('<span class="chip g">₩'+Number(info.price).toLocaleString()+'</span>');
+  if(info.barcode) chips.push('<span class="chip b">'+info.barcode+'</span>');
+  if(info.expiry) chips.push('<span class="chip y">유통: '+info.expiry+'</span>');
+  if(info.order) chips.push('<span class="chip b">Order: '+info.order+'</span>');
+  if(info.lot) chips.push('<span class="chip g">LOT: '+info.lot+'</span>');
+  if(info.batch) chips.push('<span class="chip y">BATCH: '+info.batch+'</span>');
+  if(info.partner) chips.push('<span class="chip">거래처: '+info.partner+'</span>');
+  if(info.netweight) chips.push('<span class="chip g">NET: '+info.netweight+' '+(info.weightunit||'KG')+'</span>');
+  if(info.spec) chips.push('<span class="chip">규격: '+info.spec+'</span>');
+  if(info.weight) chips.push('<span class="chip">중량: '+info.weight+'</span>');
+  (info.tags||[]).slice(0,3).forEach(function(t){chips.push('<span class="chip">'+t+'</span>');});
   document.getElementById('res-chips').innerHTML = chips.join('');
   document.getElementById('scan-res').style.display='block';
 }
@@ -781,7 +781,7 @@ function regScan(forceType) {
   renderLog();
   renderStock();
   resetScan();
-  toast(`✓ ${name} ${qty}개 ${type==='in'?'입고':'출고'} 등록`,'g');
+  toast('✓ '+name+' '+qty+'개 '+(type==='in'?'입고':'출고')+' 등록','g');
 }
 
 function resetScan() {
@@ -795,14 +795,14 @@ function resetScan() {
 function deleteRecord(id) {
   const r = records.find(x=>x.id===id);
   if(!r) return;
-  if(!confirm(`"${r.name}" (${r.id}) 를 삭제할까요?
-이 작업은 되돌릴 수 없어요.`)) return;
+  if(!confirm('"'+r.name+'" ('+r.id+') 를 삭제할까요?\n이 작업은 되돌릴 수 없어요.')) return;
+
   records = records.filter(x=>x.id!==id);
   save();
   updateKPIs();
   pushToSheets('delete', {id: r.id});
   renderLog();
-  toast(`${r.id} 삭제 완료`);
+  toast(r.id+' 삭제 완료');
 }
 
 // ── LOG ──
@@ -867,8 +867,8 @@ function renderLog() {
         +'</div>'
       +'</div>'
       +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
-        +'<button class="edit-btn" onclick="openEdit(\''+rid+'\')">수정</button>'
-        +'<button class="del-btn" onclick="deleteRecord(\''+rid+'\')">삭제</button>'
+        +'<button class="edit-btn" data-id="'+rid+'" onclick="openEdit(this.dataset.id)">수정</button>'
+        +'<button class="del-btn" data-id="'+rid+'" onclick="deleteRecord(this.dataset.id)">삭제</button>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -898,12 +898,12 @@ function openEdit(id) {
   if(!r.history||!r.history.length) {
     hl.innerHTML='<div style="font-size:12px;color:var(--t3)">수정 이력 없음</div>';
   } else {
-    hl.innerHTML = r.history.map(h=>`
-      <div class="hist-item">
-        <b>${h.at}</b> 수정<br>
-        ${Object.entries(h.changes).map(([k,v])=>`${fieldLabel(k)}: <span style="color:var(--red2);text-decoration:line-through">${v[0]}</span> → <span style="color:var(--grn)">${v[1]}</span>`).join('<br>')}
-        ${h.memo?'<br>메모: '+h.memo:''}
-      </div>`).join('');
+    hl.innerHTML = r.history.map(function(h) {
+      var changes = Object.entries(h.changes||{}).map(function(e) {
+        return fieldLabel(e[0])+': <span style="color:var(--red2);text-decoration:line-through">'+e[1][0]+'</span> → <span style="color:var(--grn)">'+e[1][1]+'</span>';
+      }).join('<br>');
+      return '<div class="hist-item"><b>'+(h.at||'')+'</b> 수정<br>'+changes+(h.memo?'<br>메모: '+h.memo:'')+'</div>';
+    }).join('');
   }
   document.getElementById('modal').style.display='flex';
 }
@@ -1008,7 +1008,7 @@ function recordsToRows() {
     '메모':r.note||'',
     '등록일시':r.registeredAt||'',
     '수정횟수':(r.history||[]).length,
-    '수정이력':(r.history||[]).map(h=>`[${h.at}] ${Object.entries(h.changes).map(([k,v])=>fieldLabel(k)+':'+v[0]+'→'+v[1]).join(', ')}`).join(' | '),
+    '수정이력':(r.history||[]).map(function(h){return '['+h.at+'] '+Object.entries(h.changes||{}).map(function(e){return fieldLabel(e[0])+':'+e[1][0]+'→'+e[1][1];}).join(', ');}).join(' | '),
   }));
 }
 
