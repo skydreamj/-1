@@ -364,26 +364,31 @@ function load() {
 }
 
 async function syncFromSheets() {
+  toast('동기화 중...');
   try {
-    const res = await fetch(SHEETS_URL + '?action=getAll');
+    const res = await fetch(SHEETS_URL + '?action=getAll&t=' + Date.now());
     const data = await res.json();
     if(data.ok && data.records && data.records.length) {
       records = data.records;
       save();
       updateKPIs();
-      toast('✓ 구글 시트에서 동기화 완료', 'g');
     }
+    setHdrDate();
+    toast('✓ 동기화 완료 · ' + new Date().toLocaleTimeString('ko-KR'), 'g');
   } catch(e) {
+    setHdrDate();
+    toast('동기화 실패: ' + e.message);
     console.warn('Sheets sync failed:', e);
   }
 }
 
 async function pushToSheets(action, record) {
   try {
-    await fetch(SHEETS_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action, ...record})
+    // Apps Script POST requires form-encoded or URL params due to CORS
+    const payload = JSON.stringify({action, ...record});
+    const params = new URLSearchParams({data: payload});
+    await fetch(SHEETS_URL + '?' + params.toString(), {
+      method: 'GET',
     });
   } catch(e) {
     console.warn('Sheets push failed:', e);
@@ -407,8 +412,9 @@ function today() { return new Date().toISOString().slice(0,10); }
 
 function setHdrDate() {
   const d = new Date();
-  document.getElementById('hdr-date').textContent =
-    `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  const date = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  document.getElementById('hdr-date').textContent = `${date} ${time}`;
 }
 
 function updateKPIs() {
