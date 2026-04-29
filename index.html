@@ -597,6 +597,7 @@ function regScan(forceType) {
     qty, unit: document.getElementById('s-unit').value.trim()||'개',
     source:'scan',
     note: document.getElementById('s-note').value.trim(),
+    registeredAt: new Date().toLocaleString('ko-KR'),
     history:[]
   });
   save(); updateKPIs();
@@ -655,6 +656,7 @@ function renderLog() {
           <div class="log-qty ${r.type}">${r.type==='in'?'+':'-'}${r.qty.toLocaleString()}${r.unit}</div>
         </div>
         <div class="log-meta">${r.id} · ${r.date}${r.order?' · '+r.order:''}${r.partner?' · '+r.partner:''}${r.spec?' · '+r.spec:''}${r.weight?' · '+r.weight:''}</div>
+        <div class="log-meta" style="color:var(--t3);font-size:10px;margin-top:2px;">📅 ${r.registeredAt||'-'}</div>
         <div class="log-tags">
           ${r.source==='scan'?'<span class="tag scan">스캔</span>':''}
           ${r.history&&r.history.length?'<span class="tag mod">수정됨 '+r.history.length+'회</span>':''}
@@ -786,6 +788,7 @@ function recordsToRows() {
     '단위':r.unit||'개',
     '입력방법':r.source==='scan'?'스캔':'직접입력',
     '메모':r.note||'',
+    '등록일시':r.registeredAt||'',
     '수정횟수':(r.history||[]).length,
     '수정이력':(r.history||[]).map(h=>`[${h.at}] ${Object.entries(h.changes).map(([k,v])=>fieldLabel(k)+':'+v[0]+'→'+v[1]).join(', ')}`).join(' | '),
   }));
