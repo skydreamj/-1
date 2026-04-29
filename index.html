@@ -617,8 +617,10 @@ function addManual() {
   });
   save(); updateKPIs();
   pushToSheets('add', records[0]);
+  renderLog();
+  renderStock();
   ['m-name','m-partner','m-order','m-lot','m-spec','m-netweight','m-qty','m-note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('m-unit').value='개';
+  document.getElementById('m-unit').value='PIECES';
   toast(`✓ ${name} ${qty}개 ${mType==='in'?'입고':'출고'} 등록 완료`,'g');
 }
 
@@ -776,6 +778,8 @@ function regScan(forceType) {
   });
   save(); updateKPIs();
   pushToSheets('add', records[0]);
+  renderLog();
+  renderStock();
   resetScan();
   toast(`✓ ${name} ${qty}개 ${type==='in'?'입고':'출고'} 등록`,'g');
 }
