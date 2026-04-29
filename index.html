@@ -158,7 +158,10 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
   <div class="hdr">
     <div class="hdr-top">
       <div class="brand"><b>INV</b>·PRO</div>
+      <div style="display:flex;align-items:center;gap:8px;">
       <div class="hdr-date" id="hdr-date"></div>
+      <button onclick="syncFromSheets()" style="font-size:10px;padding:4px 9px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;font-family:var(--mono);">🔄 동기화</button>
+    </div>
     </div>
     <div class="kpis">
       <div class="kpi g"><div class="kpi-v" id="k-in">0</div><div class="kpi-l">입고</div></div>
@@ -353,15 +356,38 @@ let editId = null;
 
 // ── Worker URL (Cloudflare) ──
 const WORKER_URL = 'https://lingering-moon-8748.skydreamj.workers.dev';
+// ── Google Sheets URL ──
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyutJq3cPtuJg-pIyJyuPTGJx4F2kSx3FAyEKBhhQcNNwMvNSfgGhkJ9Zywc2Id8tXYwg/exec';
 
 function load() {
   try { const s = localStorage.getItem(SK); if(s) records = JSON.parse(s); } catch(e){}
-  if(!records.length) records = [
-    {id:'REC-001',seq:1,date:'2025-04-20',type:'in',name:'스틸 파이프 A형',partner:'한국철강(주)',spec:'Φ50×3.2t',weight:'12.5kg',qty:100,unit:'개',source:'manual',note:'',history:[]},
-    {id:'REC-002',seq:2,date:'2025-04-21',type:'in',name:'앵글 L-50',partner:'대성금속',spec:'50×50×5t',weight:'4.8kg',qty:200,unit:'개',source:'manual',note:'',history:[]},
-    {id:'REC-003',seq:3,date:'2025-04-22',type:'out',name:'스틸 파이프 A형',partner:'현장납품',spec:'Φ50×3.2t',weight:'12.5kg',qty:30,unit:'개',source:'manual',note:'현장A 납품',history:[]},
-    {id:'REC-004',seq:4,date:'2025-04-24',type:'out',name:'앵글 L-50',partner:'현장납품',spec:'50×50×5t',weight:'4.8kg',qty:50,unit:'개',source:'manual',note:'',history:[]},
-  ];
+}
+
+async function syncFromSheets() {
+  try {
+    const res = await fetch(SHEETS_URL + '?action=getAll');
+    const data = await res.json();
+    if(data.ok && data.records && data.records.length) {
+      records = data.records;
+      save();
+      updateKPIs();
+      toast('✓ 구글 시트에서 동기화 완료', 'g');
+    }
+  } catch(e) {
+    console.warn('Sheets sync failed:', e);
+  }
+}
+
+async function pushToSheets(action, record) {
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action, ...record})
+    });
+  } catch(e) {
+    console.warn('Sheets push failed:', e);
+  }
 }
 
 function save() {
@@ -433,6 +459,7 @@ function addManual() {
     history:[]
   });
   save(); updateKPIs();
+  pushToSheets('add', records[0]);
   ['m-name','m-partner','m-order','m-spec','m-weight','m-qty','m-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-unit').value='개';
   toast(`✓ ${name} ${qty}개 ${mType==='in'?'입고':'출고'} 등록 완료`,'g');
@@ -567,6 +594,7 @@ function regScan(forceType) {
     history:[]
   });
   save(); updateKPIs();
+  pushToSheets('add', records[0]);
   resetScan();
   toast(`✓ ${name} ${qty}개 ${type==='in'?'입고':'출고'} 등록`,'g');
 }
@@ -587,6 +615,7 @@ function deleteRecord(id) {
   records = records.filter(x=>x.id!==id);
   save();
   updateKPIs();
+  pushToSheets('delete', {id: r.id});
   renderLog();
   toast(`${r.id} 삭제 완료`);
 }
@@ -697,6 +726,7 @@ function saveEdit() {
   r.history.push({at: now, changes, memo:''});
   Object.assign(r, nv);
   save(); updateKPIs();
+  pushToSheets('update', r);
   document.getElementById('modal').style.display='none';
   editId=null;
   renderLog();
@@ -814,6 +844,7 @@ function init() {
   document.getElementById('s-date') && (document.getElementById('s-date').value = today());
 }
 init();
+syncFromSheets();
 </script>
 </body>
 </html>
