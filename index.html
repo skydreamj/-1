@@ -211,14 +211,32 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
               <div class="fg"><label>날짜 *</label><input id="s-date" type="date"/></div>
               <div class="fg"><label>거래처</label><input id="s-partner" type="text" placeholder="거래처명"/></div>
             </div>
-            <div class="fg"><label>Order #</label><input id="s-order" type="text" placeholder="GOPO-XXXXXX"/></div>
             <div class="row2">
-              <div class="fg"><label>규격</label><input id="s-spec" type="text" placeholder="예: 10x20cm"/></div>
-              <div class="fg"><label>NET 중량</label><input id="s-weight" type="text" placeholder="예: 25.5kg"/></div>
+              <div class="fg"><label>Order #</label><input id="s-order" type="text" placeholder="GOPO-XXXXXX"/></div>
+              <div class="fg"><label>LOT NR & BATCH NR</label><input id="s-lot" type="text" placeholder="LOT / BATCH"/></div>
+            </div>
+            <div class="fg"><label>규격</label><input id="s-spec" type="text" placeholder="예: R10.50X3C 1202 kg 등 상세 규격"/></div>
+            </div>
+            <div class="row2">
+              <div class="fg"><label>NET 중량</label><input id="s-netweight" type="number" step="0.001" min="0" placeholder="0.000" oninput="autoCalcQty('s')"/></div>
+              <div class="fg"><label>중량 단위</label>
+                <select id="s-weightunit">
+                  <option value="KG">KG</option>
+                  <option value="LBS">LBS</option>
+                </select>
+              </div>
             </div>
             <div class="row2">
               <div class="fg"><label>수량 *</label><input id="s-qty" type="number" min="1" value="1"/></div>
-              <div class="fg"><label>단위</label><input id="s-unit" type="text" value="개"/></div>
+              <div class="fg"><label>수량 단위</label>
+                <select id="s-unit">
+                  <option value="PIECES">PIECES</option>
+                  <option value="SHEETS">SHEETS</option>
+                  <option value="COILS">COILS</option>
+                  <option value="ROLLS">ROLLS</option>
+                  <option value="EA">EA</option>
+                </select>
+              </div>
             </div>
             <div class="fg"><label>구분 *</label>
               <select id="s-type"><option value="in">입고</option><option value="out">출고</option></select>
@@ -244,19 +262,43 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
             <button class="tt-btn" id="tt-out" onclick="setMT('out')">▼ 출고</button>
           </div>
         </div>
+        <div class="fg" id="stock-select-wrap" style="display:none;">
+          <label>출고할 재고 선택 (LOT/BATCH 기준)</label>
+          <select id="m-stock-select" onchange="fillFromStock(this.value)" style="background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:10px 12px;font-size:13px;color:var(--t1);width:100%;outline:none;">
+            <option value="">-- 재고에서 선택 --</option>
+          </select>
+        </div>
         <div class="fg"><label>품목명 *</label><input id="m-name" type="text" placeholder="품목명"/></div>
         <div class="row2">
           <div class="fg"><label>날짜 *</label><input id="m-date" type="date"/></div>
           <div class="fg"><label>거래처</label><input id="m-partner" type="text" placeholder="거래처명"/></div>
         </div>
-        <div class="fg"><label>Order #</label><input id="m-order" type="text" placeholder="GOPO-XXXXXX"/></div>
         <div class="row2">
-          <div class="fg"><label>규격</label><input id="m-spec" type="text" placeholder="예: 10x20cm"/></div>
-          <div class="fg"><label>NET 중량</label><input id="m-weight" type="text" placeholder="예: 25.5kg"/></div>
+          <div class="fg"><label>Order #</label><input id="m-order" type="text" placeholder="GOPO-XXXXXX"/></div>
+          <div class="fg"><label>LOT NR & BATCH NR</label><input id="m-lot" type="text" placeholder="LOT / BATCH 번호"/></div>
+        </div>
+        <div class="fg"><label>규격</label><input id="m-spec" type="text" placeholder="예: R10.50X3C 1202 kg 등 상세 규격"/></div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>NET 중량</label><input id="m-netweight" type="number" step="0.001" min="0" placeholder="0.000" oninput="autoCalcQty('m')"/></div>
+          <div class="fg"><label>중량 단위</label>
+            <select id="m-weightunit">
+              <option value="KG">KG</option>
+              <option value="LBS">LBS</option>
+            </select>
+          </div>
         </div>
         <div class="row2">
           <div class="fg"><label>수량 *</label><input id="m-qty" type="number" min="1" placeholder="수량"/></div>
-          <div class="fg"><label>단위</label><input id="m-unit" type="text" value="개"/></div>
+          <div class="fg"><label>수량 단위</label>
+            <select id="m-unit">
+              <option value="PIECES">PIECES</option>
+              <option value="SHEETS">SHEETS</option>
+              <option value="COILS">COILS</option>
+              <option value="ROLLS">ROLLS</option>
+              <option value="EA">EA</option>
+            </select>
+          </div>
         </div>
         <div class="fg"><label>메모</label><input id="m-note" type="text" placeholder="메모 (선택)"/></div>
         <button class="submit-btn" onclick="addManual()">등록하기</button>
@@ -317,10 +359,13 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
       <div class="fg"><label>날짜 *</label><input id="e-date" type="date"/></div>
       <div class="fg"><label>거래처</label><input id="e-partner" type="text"/></div>
     </div>
-    <div class="fg"><label>Order #</label><input id="e-order" type="text" placeholder="GOPO-XXXXXX"/></div>
     <div class="row2">
-      <div class="fg"><label>규격</label><input id="e-spec" type="text"/></div>
-      <div class="fg"><label>NET 중량</label><input id="e-weight" type="text"/></div>
+      <div class="fg"><label>Order #</label><input id="e-order" type="text" placeholder="GOPO-XXXXXX"/></div>
+      <div class="fg"><label>LOT NR & BATCH NR</label><input id="e-lot" type="text" placeholder="LOT / BATCH 번호"/></div>
+    </div>
+    <div class="fg"><label>규격</label><input id="e-spec" type="text"/></div>
+      <div class="fg"><label>NET 중량</label><input id="e-netweight" type="number" step="0.001" min="0" placeholder="0.000"/></div>
+      <div class="fg"><label>중량 단위</label><select id="e-weightunit"><option value="KG">KG</option><option value="LBS">LBS</option></select></div>
     </div>
     <div class="row2">
       <div class="fg"><label>수량 *</label><input id="e-qty" type="number" min="1"/></div>
@@ -441,11 +486,73 @@ function nav(pg, el) {
   if(pg==='stock') renderStock();
 }
 
+// ── AUTO CALC QTY ──
+function autoCalcQty(prefix) {
+  const nw = parseFloat(document.getElementById(prefix+'-netweight').value);
+  const qty = document.getElementById(prefix+'-qty');
+  if (nw > 0 && (!qty.value || qty.value == 1)) {
+    qty.value = Math.ceil(nw / 2.18714);
+  }
+}
+
 // ── MANUAL ──
+function getStockList() {
+  // Group by LOT NR or BATCH, calc remaining qty
+  const map = {};
+  records.forEach(r => {
+    const key = r.lot ? `LOT:${r.lot}` : r.batch ? `BATCH:${r.batch}` : `${r.name}`;
+    if (!map[key]) map[key] = { name: r.name, lot: r.lot||'', batch: r.batch||'', partner: r.partner||'', order: r.order||'', spec: r.spec||'', netweight: r.netweight||'', weightunit: r.weightunit||'KG', unit: r.unit||'PIECES', qty: 0 };
+    if (r.type === 'in') map[key].qty += r.qty;
+    else map[key].qty -= r.qty;
+  });
+  return Object.entries(map).filter(([k,v]) => v.qty > 0).map(([k,v]) => ({key:k, ...v}));
+}
+
+function updateStockSelect() {
+  const sel = document.getElementById('m-stock-select');
+  const list = getStockList();
+  sel.innerHTML = '<option value="">-- 재고에서 선택 --</option>';
+  list.forEach(s => {
+    const label = `${s.name} · ${s.lot?'LOT:'+s.lot:s.batch?'BATCH:'+s.batch:''} · 잔여 ${s.qty.toLocaleString()} ${s.unit}`;
+    sel.innerHTML += `<option value="${s.key}">${label}</option>`;
+  });
+}
+
+function fillFromStock(key) {
+  if (!key) return;
+  const list = getStockList();
+  const s = list.find(x => x.key === key);
+  if (!s) return;
+  document.getElementById('m-name').value = s.name;
+  document.getElementById('m-partner').value = s.partner;
+  document.getElementById('m-order').value = s.order;
+  document.getElementById('m-lot').value = s.lot;
+  document.getElementById('m-batch').value = s.batch;
+  document.getElementById('m-spec').value = s.spec;
+  document.getElementById('m-netweight').value = s.netweight||'';
+  const mwu = document.getElementById('m-weightunit');
+  if(mwu) mwu.value = (s.weightunit||'KG');
+  document.getElementById('m-unit').value = s.unit.toUpperCase().includes('KG') ? 'KG' : 'PIECES';
+  // Set max qty hint
+  document.getElementById('m-qty').placeholder = `최대 ${s.qty.toLocaleString()} ${s.unit}`;
+  document.getElementById('m-qty').max = s.qty;
+}
+
+
 function setMT(t) {
   mType = t;
   document.getElementById('tt-in').className = 'tt-btn'+(t==='in'?' in':'');
   document.getElementById('tt-out').className = 'tt-btn'+(t==='out'?' out':'');
+  const wrap = document.getElementById('stock-select-wrap');
+  if (t === 'out') {
+    wrap.style.display = 'block';
+    updateStockSelect();
+  } else {
+    wrap.style.display = 'none';
+    document.getElementById('m-stock-select').value = '';
+    document.getElementById('m-qty').placeholder = '수량';
+    document.getElementById('m-qty').removeAttribute('max');
+  }
 }
 
 function addManual() {
@@ -460,16 +567,19 @@ function addManual() {
     name,
     partner: document.getElementById('m-partner').value.trim(),
     order: document.getElementById('m-order').value.trim(),
+    lot: document.getElementById('m-lot').value.trim(),
+    batch: document.getElementById('m-lot').value.trim(),
     spec: document.getElementById('m-spec').value.trim(),
-    weight: document.getElementById('m-weight').value.trim(),
-    qty, unit: document.getElementById('m-unit').value.trim()||'개',
+    netweight: document.getElementById('m-netweight').value,
+    weightunit: document.getElementById('m-weightunit').value,
+    qty, unit: document.getElementById('m-unit').value||'PIECES',
     source:'manual',
     note: document.getElementById('m-note').value.trim(),
     history:[]
   });
   save(); updateKPIs();
   pushToSheets('add', records[0]);
-  ['m-name','m-partner','m-order','m-spec','m-weight','m-qty','m-note'].forEach(id=>document.getElementById(id).value='');
+  ['m-name','m-partner','m-order','m-lot','m-spec','m-netweight','m-qty','m-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-unit').value='개';
   toast(`✓ ${name} ${qty}개 ${mType==='in'?'입고':'출고'} 등록 완료`,'g');
 }
@@ -517,7 +627,7 @@ async function callAI(b64, mime) {
 Analyze this product tag/label image carefully and extract all visible information.
 Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
 
-{"name":"품목명 (브랜드+제품명 구체적으로. ARCONIC 로고나 브랜드가 보이면 반드시 ARCONIC을 포함할 것. 예: ARCONIC ALUMINUM SHEET, ARCONIC 6061-T6 등. 브랜드 불명확하면 ARCONIC ALUMINUM 으로 입력)","qty":수량숫자또는1,"unit":"단위(개/박스/kg/L/매/롤)","date":"YYYY-MM-DD 보이면 해당날짜 없으면 ${new Date().toISOString().slice(0,10)}","partner":"거래처명 보이면 입력 없으면 null","spec":"규격/사이즈 보이면 입력 없으면 null","weight":"NET 중량(순중량) 우선 인식. NET WT, NET WEIGHT, N.W. 라고 표시된 값 사용. 없으면 GROSS나 다른 중량값 사용. 단위 포함하여 입력 (예: 25.5kg, 1500 LBS). 없으면 null","price":가격숫자또는null,"order":"GOPO로 시작하는 주문번호 보이면 입력 없으면 null","barcode":"바코드또는품번 없으면 null","expiry":"유통기한 없으면 null","tags":["키워드1","키워드2"],"type":"in","note":"기타정보"}`;
+{"name":"품목명 (브랜드+제품명 구체적으로. ARCONIC 로고나 브랜드가 보이면 반드시 ARCONIC을 포함할 것. 예: ARCONIC ALUMINUM SHEET, ARCONIC 6061-T6 등. 브랜드 불명확하면 ARCONIC ALUMINUM 으로 입력)","qty":수량숫자또는1,"unit":"단위. PIECES 또는 KG 만 사용. 수량이 개수면 PIECES, 무게면 KG","date":"YYYY-MM-DD 보이면 해당날짜 없으면 ${new Date().toISOString().slice(0,10)}","partner":"생산자/제조사 이름. ASBW, ELVALHALCOR, ARCONIC, NOVELIS, HYDRO, CONSTELLIUM 등 알루미늄 제조사 이름 우선 인식. 태그에서 생산자 로고나 이름 찾아서 입력. 없으면 null","spec":"규격/사이즈 보이면 입력 없으면 null","netweight":"NET 중량 숫자만 (NET WT, NET WEIGHT, N.W. 표시값 우선. 없으면 GROSS값). 숫자만 반환 없으면 null","weightunit":"중량 단위 KG 또는 LBS. 없으면 KG","qty":"수량 숫자 (PIECES, SHEETS, COILS, ROLLS, EA 단위의 개수). 없으면 1","unit":"수량 단위. PIECES/SHEETS/COILS/ROLLS/EA 중 하나. 없으면 PIECES","price":가격숫자또는null,"order":"GOPO로 시작하는 주문번호 보이면 입력 없으면 null","lot":"LOT NR. 우선 입력. LOT NR.이 있으면 LOT NR.만 입력. LOT NR.이 없을 때만 BATCH NR. 입력. 둘 다 없으면 null","barcode":"바코드또는품번 없으면 null","expiry":"유통기한 없으면 null","tags":["키워드1","키워드2"],"type":"in","note":"기타정보"}`;
 
   let res;
   try {
@@ -561,11 +671,25 @@ function showRes(info) {
   document.getElementById('s-name').value = info.name||'ARCONIC ALUMINUM';
   document.getElementById('s-date').value = today();
   document.getElementById('s-order').value = info.order||'';
+  document.getElementById('s-lot').value = info.lot || (!info.lot && info.batch ? info.batch : '');
+
   document.getElementById('s-partner').value = info.partner||'';
   document.getElementById('s-spec').value = info.spec||'';
   document.getElementById('s-weight').value = info.weight||'';
   document.getElementById('s-qty').value = info.qty||1;
-  document.getElementById('s-unit').value = info.unit||'개';
+  document.getElementById('s-netweight').value = info.netweight||'';
+  const wu = (info.weightunit||'KG').toUpperCase();
+  document.getElementById('s-weightunit').value = wu.includes('LBS') ? 'LBS' : 'KG';
+  const units = ['PIECES','SHEETS','COILS','ROLLS','EA'];
+  const rawUnit = (info.unit||'PIECES').toUpperCase();
+  const matchedUnit = units.find(u => rawUnit.includes(u)) || 'PIECES';
+  document.getElementById('s-unit').value = matchedUnit;
+  // Auto-calc qty if no qty but has netweight (ASBW case: netweight / 2.18714, ceiling)
+  const sqty = parseInt(document.getElementById('s-qty').value);
+  const snw = parseFloat(document.getElementById('s-netweight').value);
+  if ((!sqty || sqty <= 1) && snw > 0) {
+    document.getElementById('s-qty').value = Math.ceil(snw / 2.18714);
+  }
   document.getElementById('s-type').value = info.type||'in';
   document.getElementById('s-note').value = info.note||'';
 
@@ -574,7 +698,10 @@ function showRes(info) {
   if(info.barcode) chips.push(`<span class="chip b">${info.barcode}</span>`);
   if(info.expiry) chips.push(`<span class="chip y">유통: ${info.expiry}</span>`);
   if(info.order) chips.push(`<span class="chip b">Order: ${info.order}</span>`);
+  if(info.lot) chips.push(`<span class="chip g">LOT: ${info.lot}</span>`);
+  if(info.batch) chips.push(`<span class="chip y">BATCH: ${info.batch}</span>`);
   if(info.partner) chips.push(`<span class="chip">거래처: ${info.partner}</span>`);
+  if(info.netweight) chips.push(`<span class="chip g">NET: ${info.netweight} ${info.weightunit||'KG'}</span>`);
   if(info.spec) chips.push(`<span class="chip">규격: ${info.spec}</span>`);
   if(info.weight) chips.push(`<span class="chip">중량: ${info.weight}</span>`);
   (info.tags||[]).slice(0,3).forEach(t=>chips.push(`<span class="chip">${t}</span>`));
@@ -595,9 +722,12 @@ function regScan(forceType) {
     name,
     partner: document.getElementById('s-partner').value.trim(),
     order: document.getElementById('s-order').value.trim(),
+    lot: document.getElementById('s-lot').value.trim(),
+    batch: document.getElementById('s-lot').value.trim(),
     spec: document.getElementById('s-spec').value.trim(),
-    weight: document.getElementById('s-weight').value.trim(),
-    qty, unit: document.getElementById('s-unit').value.trim()||'개',
+    netweight: document.getElementById('s-netweight').value,
+    weightunit: document.getElementById('s-weightunit').value,
+    qty, unit: document.getElementById('s-unit').value||'PIECES',
     source:'scan',
     note: document.getElementById('s-note').value.trim(),
     registeredAt: new Date().toLocaleString('ko-KR'),
@@ -658,7 +788,8 @@ function renderLog() {
           <div class="log-name">${r.name}</div>
           <div class="log-qty ${r.type}">${r.type==='in'?'+':'-'}${r.qty.toLocaleString()}${r.unit}</div>
         </div>
-        <div class="log-meta">${r.id} · ${r.date}${r.order?' · '+r.order:''}${r.partner?' · '+r.partner:''}${r.spec?' · '+r.spec:''}${r.weight?' · '+r.weight:''}</div>
+        <div class="log-meta">${r.id} · ${r.date}${r.lot?' · LOT/BATCH:'+r.lot:''}${r.order?' · '+r.order:''}${r.partner?' · '+r.partner:''}</div>
+        <div class="log-meta" style="font-size:10px;color:var(--t3);">${r.spec?' '+r.spec:''}${r.netweight?' · NET '+r.netweight+' '+(r.weightunit||'KG'):r.weight?' · '+r.weight:''}</div>
         <div class="log-meta" style="color:var(--t3);font-size:10px;margin-top:2px;">📅 ${r.registeredAt||'-'}</div>
         <div class="log-tags">
           ${r.source==='scan'?'<span class="tag scan">스캔</span>':''}
@@ -681,6 +812,13 @@ function openEdit(id) {
   document.getElementById('e-date').value = r.date;
   document.getElementById('e-partner').value = r.partner||'';
   document.getElementById('e-order').value = r.order||'';
+  document.getElementById('e-lot').value = r.lot || (!r.lot && r.batch ? r.batch : '');
+  document.getElementById('e-netweight').value = r.netweight||'';
+  const ewu = document.getElementById('e-weightunit');
+  if(ewu) ewu.value = (r.weightunit||'KG').toUpperCase().includes('LBS') ? 'LBS' : 'KG';
+  const eu = document.getElementById('e-unit');
+  const units2 = ['PIECES','SHEETS','COILS','ROLLS','EA'];
+  eu.value = units2.find(u => (r.unit||'').toUpperCase().includes(u)) || 'PIECES';
   document.getElementById('e-spec').value = r.spec||'';
   document.getElementById('e-weight').value = r.weight||'';
   document.getElementById('e-qty').value = r.qty;
@@ -702,7 +840,7 @@ function openEdit(id) {
 }
 
 function fieldLabel(k) {
-  return {name:'품목명',date:'날짜',partner:'거래처',order:'Order#',spec:'규격',weight:'NET 중량',qty:'수량',unit:'단위',type:'구분',note:'메모'}[k]||k;
+  return {name:'품목명',date:'날짜',partner:'거래처',order:'Order#',lot:'LOT NR & BATCH NR',batch:'LOT NR & BATCH NR',spec:'규격',netweight:'NET 중량',weightunit:'중량단위',qty:'수량',unit:'단위',type:'구분',note:'메모'}[k]||k;
 }
 
 function closeModal(e) {
@@ -719,10 +857,13 @@ function saveEdit() {
     date: document.getElementById('e-date').value,
     partner: document.getElementById('e-partner').value.trim(),
     order: document.getElementById('e-order').value.trim(),
+    lot: document.getElementById('e-lot').value.trim(),
+    batch: document.getElementById('e-lot').value.trim(),
     spec: document.getElementById('e-spec').value.trim(),
-    weight: document.getElementById('e-weight').value.trim(),
+    netweight: document.getElementById('e-netweight').value,
+    weightunit: document.getElementById('e-weightunit') ? document.getElementById('e-weightunit').value : 'KG',
     qty: parseInt(document.getElementById('e-qty').value),
-    unit: document.getElementById('e-unit').value.trim()||'개',
+    unit: document.getElementById('e-unit').value||'PIECES',
     type: document.getElementById('e-type').value,
     note: document.getElementById('e-note').value.trim(),
   };
@@ -785,7 +926,10 @@ function recordsToRows() {
     '품목명':r.name,
     '거래처':r.partner||'',
     'Order#':r.order||'',
+    'LOT NR & BATCH NR':r.lot||r.batch||'',
     '규격':r.spec||'',
+    'NET 중량':r.netweight||'',
+    '중량단위':r.weightunit||'KG',
     '중량':r.weight||'',
     '수량':r.qty,
     '단위':r.unit||'개',
