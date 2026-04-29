@@ -423,6 +423,8 @@ async function syncFromSheets() {
       updateKPIs();
     }
     setHdrDate();
+    renderLog();
+    renderStock();
     toast('✓ 동기화 완료 · ' + new Date().toLocaleTimeString('ko-KR'), 'g');
   } catch(e) {
     setHdrDate();
@@ -769,6 +771,9 @@ function setF(f, el) {
 }
 
 function renderLog() {
+  const logEl = document.getElementById('log-list');
+  if(!logEl) return;
+  if(!records || !records.length) { logEl.innerHTML='<div class="empty">내역이 없습니다</div>'; return; }
   const q = (document.getElementById('srch')||{}).value||'';
   let list = records.filter(r=>{
     if(q && !r.name.includes(q) && !(r.partner||'').includes(q)) return false;
