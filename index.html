@@ -828,28 +828,50 @@ function renderLog() {
   });
   const el = document.getElementById('log-list');
   if(!list.length){el.innerHTML='<div class="empty">내역이 없습니다</div>';return;}
-  el.innerHTML = list.map(r=>`
-    <div class="log-item">
-      <div class="log-dot ${r.type}"></div>
-      <div class="log-body">
-        <div class="log-top">
-          <div class="log-name">${r.name}</div>
-          <div class="log-qty ${r.type}">${r.type==='in'?'+':'-'}${(r.qty||0).toLocaleString()}${r.unit}</div>
-        </div>
-        <div class="log-meta">${r.id} · ${r.date}${r.lot?' · LOT/BATCH:'+r.lot:''}${r.order?' · '+r.order:''}${r.partner?' · '+r.partner:''}</div>
-        <div class="log-meta" style="font-size:10px;color:var(--t3);">${r.spec?' '+r.spec:''}${r.netweight?' · NET '+r.netweight+' '+(r.weightunit||'KG'):r.weight?' · '+r.weight:''}</div>
-        <div class="log-meta" style="color:var(--t3);font-size:10px;margin-top:2px;">📅 ${r.registeredAt||'-'}</div>
-        <div class="log-tags">
-          ${r.source==='scan'?'<span class="tag scan">스캔</span>':''}
-          ${r.history&&r.history.length?'<span class="tag mod">수정됨 '+r.history.length+'회</span>':''}
-          ${r.note?'<span class="tag" style="background:var(--b1);color:var(--t2)">'+r.note+'</span>':''}
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-        <button class="edit-btn" onclick="openEdit('${r.id}')">수정</button>
-        <button class="del-btn" onclick="deleteRecord('${r.id}')">삭제</button>
-      </div>
-    </div>`).join('');
+  el.innerHTML = list.map(function(r) {
+    var nm = r.name||'';
+    var tp = r.type||'in';
+    var qty = (Number(r.qty)||0).toLocaleString();
+    var unit = r.unit||'';
+    var rid = r.id||'';
+    var date = r.date||'';
+    var lot = r.lot||'';
+    var order = r.order||'';
+    var partner = r.partner||'';
+    var spec = r.spec||'';
+    var nw = r.netweight||'';
+    var wu = r.weightunit||'KG';
+    var rat = r.registeredAt||'-';
+    var src = r.source||'';
+    var hist = r.history||[];
+    var note = r.note||'';
+    var lotStr = lot ? ' · LOT/BATCH:'+lot : '';
+    var orderStr = order ? ' · '+order : '';
+    var partnerStr = partner ? ' · '+partner : '';
+    var specStr = spec ? ' '+spec : '';
+    var nwStr = nw ? ' · NET '+nw+' '+wu : '';
+    return '<div class="log-item">'
+      +'<div class="log-dot '+tp+'"></div>'
+      +'<div class="log-body">'
+        +'<div class="log-top">'
+          +'<div class="log-name">'+nm+'</div>'
+          +'<div class="log-qty '+tp+'">'+(tp==='in'?'+':'-')+qty+unit+'</div>'
+        +'</div>'
+        +'<div class="log-meta">'+rid+' · '+date+lotStr+orderStr+partnerStr+'</div>'
+        +'<div class="log-meta" style="font-size:10px;color:var(--t3);">'+specStr+nwStr+'</div>'
+        +'<div class="log-meta" style="color:var(--t3);font-size:10px;margin-top:2px;">📅 '+rat+'</div>'
+        +'<div class="log-tags">'
+          +(src==='scan'?'<span class="tag scan">스캔</span>':'')
+          +(hist.length?'<span class="tag mod">수정됨 '+hist.length+'회</span>':'')
+          +(note?'<span class="tag" style="background:var(--b1);color:var(--t2)">'+note+'</span>':'')
+        +'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
+        +'<button class="edit-btn" onclick="openEdit(''+rid+'')">수정</button>'
+        +'<button class="del-btn" onclick="deleteRecord(''+rid+'')">삭제</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
 }
 
 // ── EDIT MODAL ──
@@ -934,26 +956,28 @@ function saveEdit() {
 
 // ── STOCK ──
 function renderStock() {
-  const stock={}, tin={}, units={}, partners={};
-  records.forEach(r=>{
-    if(!stock[r.name]){stock[r.name]=0;tin[r.name]=0;units[r.name]=r.unit||'개';partners[r.name]=r.partner||'';}
-    if(r.type==='in'){stock[r.name]+=r.qty;tin[r.name]+=r.qty;}
-    else stock[r.name]-=r.qty;
+  var stock={}, tin={}, units={}, partners={};
+  records.forEach(function(r) {
+    var nm = r.name||'(이름없음)';
+    if(!stock[nm]){stock[nm]=0;tin[nm]=0;units[nm]=r.unit||'PIECES';partners[nm]=r.partner||'';}
+    if(r.type==='in'){stock[nm]+=Number(r.qty)||0;tin[nm]+=Number(r.qty)||0;}
+    else stock[nm]-=Number(r.qty)||0;
   });
-  const items = Object.keys(stock).sort((a,b)=>stock[b]-stock[a]);
-  const el = document.getElementById('stock-list');
+  var items = Object.keys(stock).sort(function(a,b){return stock[b]-stock[a];});
+  var el = document.getElementById('stock-list');
+  if(!el) return;
   if(!items.length){el.innerHTML='<div class="empty">재고 없음</div>';return;}
-  el.innerHTML = items.map(k=>{
-    const pct = tin[k]>0?Math.round(stock[k]/tin[k]*100):0;
-    const low = pct<30;
-    return `<div class="stock-item">
-      <div class="stock-row">
-        <div class="stock-name">${k}</div>
-        <div class="stock-qty${low?' low':''}">${(stock[k]||0).toLocaleString()} ${units[k]}</div>
-      </div>
-      <div class="stock-sub">누적입고 ${(tin[k]||0).toLocaleString()} · 잔여 ${pct}%${low?' · ⚠ 부족':''}${partners[k]?' · '+partners[k]:''}</div>
-      <div class="stock-bar"><div class="stock-fill${low?' low':''}" style="width:${Math.max(pct,2)}%"></div></div>
-    </div>`;
+  el.innerHTML = items.map(function(k) {
+    var pct = tin[k]>0 ? Math.round(stock[k]/tin[k]*100) : 0;
+    var low = pct<30;
+    return '<div class="stock-item">'
+      +'<div class="stock-row">'
+        +'<div class="stock-name">'+k+'</div>'
+        +'<div class="stock-qty'+(low?' low':'')+'">'+( Number(stock[k]||0).toLocaleString())+' '+units[k]+'</div>'
+      +'</div>'
+      +'<div class="stock-sub">누적입고 '+(Number(tin[k]||0).toLocaleString())+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
+      +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
+    +'</div>';
   }).join('');
 }
 
