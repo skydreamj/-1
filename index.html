@@ -690,11 +690,30 @@ function extractJSON(raw) {
 }
 
 async function callAI(b64, mime) {
-  const prompt = `You are an inventory tag OCR reader for a warehouse system.
-Analyze this product tag/label image carefully and extract all visible information.
-Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
-
-{"name":"품목명 (브랜드+제품명 구체적으로. ARCONIC 로고나 브랜드가 보이면 반드시 ARCONIC을 포함할 것. 예: ARCONIC ALUMINUM SHEET, ARCONIC 6061-T6 등. 브랜드 불명확하면 ARCONIC ALUMINUM 으로 입력)","qty":수량숫자또는1,"unit":"단위. PIECES 또는 KG 만 사용. 수량이 개수면 PIECES, 무게면 KG","date":"YYYY-MM-DD 보이면 해당날짜 없으면 ${new Date().toISOString().slice(0,10)}","partner":"생산자/제조사 이름. ASBW, ELVALHALCOR, ARCONIC, NOVELIS, HYDRO, CONSTELLIUM 등 알루미늄 제조사 이름 우선 인식. 태그에서 생산자 로고나 이름 찾아서 입력. 없으면 null","spec":"규격/사이즈 보이면 입력 없으면 null","netweight":"NET 중량 숫자만 (NET WT, NET WEIGHT, N.W. 표시값 우선. 없으면 GROSS값). 숫자만 반환 없으면 null","weightunit":"중량 단위 KG 또는 LBS. 없으면 KG","qty":"수량 숫자 (PIECES, SHEETS, COILS, ROLLS, EA 단위의 개수). 없으면 1","unit":"수량 단위. PIECES/SHEETS/COILS/ROLLS/EA 중 하나. 없으면 PIECES","price":가격숫자또는null,"order":"GOPO로 시작하는 주문번호 보이면 입력 없으면 null","lot":"LOT NR. 우선 입력. LOT NR.이 있으면 LOT NR.만 입력. LOT NR.이 없을 때만 BATCH NR. 입력. 둘 다 없으면 null","barcode":"바코드또는품번 없으면 null","expiry":"유통기한 없으면 null","tags":["키워드1","키워드2"],"type":"in","note":"기타정보"}`;
+  var today = new Date().toISOString().slice(0,10);
+  var prompt = 'You are an expert OCR reader for a metal products warehouse. Analyze this tag/label image carefully. Respond ONLY with a raw JSON object, no markdown, no extra text.\n\n'
+  + 'STRICT RULES:\n'
+  + '1. PRODUCT NAME (name): Use EXACT standard names below. Do NOT add extra words:\n'
+  + '   - ASBW brand → "ASBW BRASS ROUND ROD " + outer diameter from spec (e.g. "ASBW BRASS ROUND ROD R10.50")\n'
+  + '   - ELVALHALCOR brand → "ELVALHALCOR BRASS ROD " + outer diameter from spec (e.g. "ELVALHALCOR BRASS ROD R10.50")\n'
+  + '     Extract outer diameter: from DESCRIPTION field, find R-number like R010,69 → format as R10.69\n'
+  + '   - ARCONIC brand → "ARCONIC ALUMINUM SHEET " + thickness from spec (e.g. "ARCONIC ALUMINUM SHEET 1.5T")\n'
+  + '     Extract thickness: first number before +/- tolerance in spec (e.g. 1.5+.045 → 1.5T)\n'
+  + '2. PARTNER (partner): Short manufacturer name only:\n'
+  + '   - ASBW → "ASBW"\n'
+  + '   - ELVALHALCOR or ELVALHAL → "ELVALHALCOR SA"\n'
+  + '   - ARCONIC (any variant including Kunshan, China) → "ARCONIC"\n'
+  + '3. ORDER# (order): ONLY accept values starting with "GOPO". If order number does NOT start with GOPO, set null.\n'
+  + '4. LOT/BATCH (lot): LOT NR. first. If no LOT NR., use BATCH NR. If neither found, set null.\n'
+  + '5. SPEC (spec): Convert tolerance format to simple dimensions:\n'
+  + '   - ARCONIC tolerance format: "1.5+.045/-.045*1360,0+1/-1*2365+2/-2" → "1.5Tx1360x2365"\n'
+  + '     Pattern: first number=thickness(T), second=width, third=length. Use x separator. Remove +/- tolerances.\n'
+  + '   - ELVALHALCOR DESCRIPTION field: extract only R-number and dimensions from text like "DESCRIPTION: ... R010,69x3025 ..."\n'
+  + '     Convert "R010,69x3025" → "R10.69x3025" (remove leading zeros, replace comma with dot). Ignore all other text.\n'
+  + '   - Other specs: extract only the core dimension value (e.g. R10.50x3000), ignore surrounding text.\n'
+  + '7. QTY (qty): Count of pieces/sheets/coils. If not shown, calculate from netweight/2.18714 rounded up\n'
+  + '\nReturn this exact JSON:\n'
+  + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + today + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":"other info"}';
 
   let res;
   try {
@@ -740,7 +759,7 @@ function setVal(id, val) {
 }
 
 function showRes(info) {
-  setVal('s-name', info.name||'ARCONIC ALUMINUM');
+  setVal('s-name', info.name||'');
   setVal('s-date', today());
   setVal('s-order', info.order||'');
   setVal('s-lot', info.lot || (!info.lot && info.batch ? info.batch : ''));
@@ -999,7 +1018,7 @@ function renderStock() {
   el.innerHTML = items.map(function(k) {
     var pct = tinw[k]>0 ? Math.round(snw[k]/tinw[k]*100) : (tin[k]>0 ? Math.round(stock[k]/tin[k]*100) : 0);
     var low = pct<30;
-    var nwStr = snw[k]>0 ? snw[k].toLocaleString()+' '+wunits[k] : '-';
+    var nwStr = snw[k]>0 ? Math.round(snw[k]*100)/100+' '+wunits[k] : '-';
     var qtyStr = stock[k]>0 ? stock[k].toLocaleString()+' '+units[k] : '0 '+units[k];
     return '<div class="stock-item">'
       +'<div class="stock-row">'
@@ -1010,7 +1029,7 @@ function renderStock() {
         +'<div style="font-size:11px;color:var(--t2);">수량</div>'
         +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
       +'</div>'
-      +'<div class="stock-sub">누적입고 '+tinw[k].toLocaleString()+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
+      +'<div class="stock-sub">누적입고 '+(Math.round(tinw[k]*100)/100)+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
       +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
     +'</div>';
   }).join('');
