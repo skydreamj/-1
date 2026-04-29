@@ -366,7 +366,11 @@ function load() {
 async function syncFromSheets() {
   toast('동기화 중...');
   try {
-    const res = await fetch(SHEETS_URL + '?action=getAll&t=' + Date.now());
+    const res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev/sheets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'getAll'})
+    });
     const data = await res.json();
     if(data.ok && data.records && data.records.length) {
       records = data.records;
@@ -384,13 +388,10 @@ async function syncFromSheets() {
 
 async function pushToSheets(action, record) {
   try {
-    const payload = JSON.stringify({action, ...record});
-    // Use no-cors POST for write operations (response is opaque but data goes through)
-    await fetch(SHEETS_URL, {
+    await fetch('https://lingering-moon-8748.skydreamj.workers.dev/sheets', {
       method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type': 'text/plain'},
-      body: payload
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action, ...record})
     });
   } catch(e) {
     console.warn('Sheets push failed:', e);
@@ -520,7 +521,7 @@ Respond ONLY with a raw JSON object. No markdown, no explanation, nothing else.
 
   let res;
   try {
-    res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev', {
+    res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
