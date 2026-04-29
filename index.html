@@ -384,11 +384,13 @@ async function syncFromSheets() {
 
 async function pushToSheets(action, record) {
   try {
-    // Apps Script POST requires form-encoded or URL params due to CORS
     const payload = JSON.stringify({action, ...record});
-    const params = new URLSearchParams({data: payload});
-    await fetch(SHEETS_URL + '?' + params.toString(), {
-      method: 'GET',
+    // Use no-cors POST for write operations (response is opaque but data goes through)
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain'},
+      body: payload
     });
   } catch(e) {
     console.warn('Sheets push failed:', e);
