@@ -169,7 +169,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 <!-- PASSWORD SCREEN -->
 <div class="pw-screen" id="pw-screen">
   <div class="pw-box">
-    <div class="pw-logo"><b>INV</b>·PRO</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;letter-spacing:0.12em;color:#f2f2f2;margin-bottom:4px;">GAON<span style="color:#00e07a;">METAL</span></div>
     <div class="pw-sub">재고관리 시스템</div>
     <input class="pw-input" id="pw-input" type="password" placeholder="••••••" maxlength="20"
       onkeydown="if(event.key==='Enter')checkPw()"/>
@@ -182,7 +182,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 <div class="app" id="main-app" style="display:none;">
   <div class="hdr">
     <div class="hdr-top">
-      <div class="brand"><b>INV</b>·PRO</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0.1em;color:#f2f2f2;">GAON<span style="color:#00e07a;">METAL</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
       <div class="hdr-date" id="hdr-date"></div>
       <button onclick="syncFromSheets()" style="font-size:10px;padding:4px 9px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;font-family:var(--mono);">🔄 동기화</button>
@@ -407,6 +407,9 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 </div>
 
 
+  <div style="text-align:center;padding:8px;font-size:10px;color:var(--t3);font-family:var(--mono);letter-spacing:0.08em;border-top:0.5px solid var(--b1);flex-shrink:0;">
+    Designed By SDJ
+  </div>
 </div><!-- /main-app -->
 <div class="toast" id="toast"></div>
 
