@@ -853,7 +853,7 @@ function renderLog() {
       +'<div class="log-body">'
         +'<div class="log-top">'
           +'<div class="log-name">'+nm+'</div>'
-          +'<div class="log-qty '+tp+'">'+(tp==='in'?'+':'-')+qty+unit+'</div>'
+          +'<div class="log-qty '+tp+'">'+(tp==='in'?'+':'-')+(nw?nw+' '+wu:qty+unit)+'</div>'
         +'</div>'
         +'<div class="log-meta">'+rid+' · '+date+lotStr+orderStr+partnerStr+'</div>'
         +'<div class="log-meta" style="font-size:10px;color:var(--t3);">'+specStr+nwStr+'</div>'
@@ -954,26 +954,34 @@ function saveEdit() {
 
 // ── STOCK ──
 function renderStock() {
-  var stock={}, tin={}, units={}, partners={};
+  var stock={}, tin={}, snw={}, tinw={}, wunits={}, units={}, partners={};
   records.forEach(function(r) {
     var nm = r.name||'(이름없음)';
-    if(!stock[nm]){stock[nm]=0;tin[nm]=0;units[nm]=r.unit||'PIECES';partners[nm]=r.partner||'';}
-    if(r.type==='in'){stock[nm]+=Number(r.qty)||0;tin[nm]+=Number(r.qty)||0;}
-    else stock[nm]-=Number(r.qty)||0;
+    if(!stock[nm]){stock[nm]=0;tin[nm]=0;snw[nm]=0;tinw[nm]=0;units[nm]=r.unit||'PIECES';wunits[nm]=r.weightunit||'KG';partners[nm]=r.partner||'';}
+    var q = Number(r.qty)||0;
+    var nw = parseFloat(r.netweight)||0;
+    if(r.type==='in'){stock[nm]+=q;tin[nm]+=q;snw[nm]+=nw;tinw[nm]+=nw;}
+    else{stock[nm]-=q;snw[nm]-=nw;}
   });
-  var items = Object.keys(stock).sort(function(a,b){return stock[b]-stock[a];});
+  var items = Object.keys(stock).sort(function(a,b){return snw[b]-snw[a];});
   var el = document.getElementById('stock-list');
   if(!el) return;
   if(!items.length){el.innerHTML='<div class="empty">재고 없음</div>';return;}
   el.innerHTML = items.map(function(k) {
-    var pct = tin[k]>0 ? Math.round(stock[k]/tin[k]*100) : 0;
+    var pct = tinw[k]>0 ? Math.round(snw[k]/tinw[k]*100) : (tin[k]>0 ? Math.round(stock[k]/tin[k]*100) : 0);
     var low = pct<30;
+    var nwStr = snw[k]>0 ? snw[k].toLocaleString()+' '+wunits[k] : '-';
+    var qtyStr = stock[k]>0 ? stock[k].toLocaleString()+' '+units[k] : '0 '+units[k];
     return '<div class="stock-item">'
       +'<div class="stock-row">'
         +'<div class="stock-name">'+k+'</div>'
-        +'<div class="stock-qty'+(low?' low':'')+'">'+( Number(stock[k]||0).toLocaleString())+' '+units[k]+'</div>'
+        +'<div class="stock-qty'+(low?' low':'')+'">'+nwStr+'</div>'
       +'</div>'
-      +'<div class="stock-sub">누적입고 '+(Number(tin[k]||0).toLocaleString())+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
+      +'<div class="stock-row" style="margin-top:4px;">'
+        +'<div style="font-size:11px;color:var(--t2);">수량</div>'
+        +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
+      +'</div>'
+      +'<div class="stock-sub">누적입고 '+tinw[k].toLocaleString()+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
       +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
     +'</div>';
   }).join('');
