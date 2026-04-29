@@ -566,7 +566,6 @@ function fillFromStock(key) {
   document.getElementById('m-partner').value = s.partner;
   document.getElementById('m-order').value = s.order;
   document.getElementById('m-lot').value = s.lot;
-  document.getElementById('m-batch').value = s.batch;
   document.getElementById('m-spec').value = s.spec;
   document.getElementById('m-netweight').value = s.netweight||'';
   const mwu = document.getElementById('m-weightunit');
@@ -714,7 +713,6 @@ function showRes(info) {
 
   document.getElementById('s-partner').value = info.partner||'';
   document.getElementById('s-spec').value = info.spec||'';
-  document.getElementById('s-weight').value = info.weight||'';
   document.getElementById('s-qty').value = info.qty||1;
   document.getElementById('s-netweight').value = info.netweight||'';
   const wu = (info.weightunit||'KG').toUpperCase();
@@ -862,7 +860,6 @@ function openEdit(id) {
   const units2 = ['PIECES','SHEETS','COILS','ROLLS','EA'];
   eu.value = units2.find(u => (r.unit||'').toUpperCase().includes(u)) || 'PIECES';
   document.getElementById('e-spec').value = r.spec||'';
-  document.getElementById('e-weight').value = r.weight||'';
   document.getElementById('e-qty').value = r.qty;
   document.getElementById('e-unit').value = r.unit||'개';
   document.getElementById('e-type').value = r.type;
