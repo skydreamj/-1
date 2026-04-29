@@ -418,14 +418,35 @@ async function syncFromSheets() {
     });
     const data = await res.json();
     if(data.ok && data.records && data.records.length) {
-      records = data.records;
+      records = data.records.map(function(r) {
+        return {
+          id: r.id||'',
+          seq: r.seq||0,
+          date: (r.date||'').toString().slice(0,10),
+          type: r.type||'in',
+          name: r.name||'',
+          partner: r.partner||'',
+          order: r.order||'',
+          lot: r.lot||'',
+          batch: r.batch||r.lot||'',
+          spec: r.spec||'',
+          netweight: r.netweight||'',
+          weightunit: r.weightunit||'KG',
+          qty: Number(r.qty)||0,
+          unit: r.unit||'PIECES',
+          source: r.source||'manual',
+          note: r.note||'',
+          registeredAt: (r.registeredAt||'').toString(),
+          history: r.history||[]
+        };
+      });
       save();
       updateKPIs();
     }
     setHdrDate();
     renderLog();
     renderStock();
-    toast('✓ 동기화 완료 · ' + new Date().toLocaleTimeString('ko-KR'), 'g');
+    toast('\u2713 동기화 완료 · ' + new Date().toLocaleTimeString('ko-KR'), 'g');
   } catch(e) {
     setHdrDate();
     toast('동기화 실패: ' + e.message);
