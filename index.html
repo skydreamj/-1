@@ -53,7 +53,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .nav-btn.on{color:var(--t1);border-bottom-color:var(--grn);}
 
 /* SCROLL AREA */
-.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;}
 
 /* ── COMMON FORM ── */
 .pg{padding:14px 16px;}
@@ -182,7 +182,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 <div class="app" id="main-app" style="display:none;">
   <div class="hdr">
     <div class="hdr-top">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0.1em;color:#f2f2f2;">GAON<span style="color:#00e07a;">METAL</span></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0.1em;color:#f2f2f2;">GAON<span style="color:#00e07a;">METAL</span> <span style="font-size:11px;color:var(--t2);font-weight:400;letter-spacing:0.05em;">재고관리시스템</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
       <div class="hdr-date" id="hdr-date"></div>
       <button onclick="syncFromSheets()" style="font-size:10px;padding:4px 9px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;font-family:var(--mono);">🔄 동기화</button>
@@ -407,10 +407,10 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 </div>
 
 
-  <div style="text-align:center;padding:8px;font-size:10px;color:var(--t3);font-family:var(--mono);letter-spacing:0.08em;border-top:0.5px solid var(--b1);flex-shrink:0;">
-    Designed By SDJ
-  </div>
 </div><!-- /main-app -->
+<div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:5px;font-size:10px;color:var(--t3);font-family:'IBM Plex Mono',monospace;letter-spacing:0.1em;background:var(--bg);border-top:0.5px solid var(--b1);z-index:50;">
+  Designed By <b style="color:#00e07a;">SDJ</b>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
