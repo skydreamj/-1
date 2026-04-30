@@ -897,7 +897,7 @@ function renderLog() {
     if(fType==='scan') return r.source==='scan';
     if(fType==='mod') return r.history&&r.history.length>0;
     return true;
-  });
+  }).sort((a,b)=>(b.seq||0)-(a.seq||0));
   const el = document.getElementById('log-list');
   if(!list.length){el.innerHTML='<div class="empty">내역이 없습니다</div>';return;}
   el.innerHTML = list.map(function(r) {
