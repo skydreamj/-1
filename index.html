@@ -631,7 +631,11 @@ function addManual() {
     date, type: mType,
     name,
     partner: document.getElementById('m-partner').value.trim(),
-    order: document.getElementById('m-order').value.trim(),
+    order: (function(){
+      var o = document.getElementById('m-order').value.trim();
+      if(o.toUpperCase().startsWith('GOPO')) o = o.replace(/^GOPO[-\s]*/i,'GOPO ').trim();
+      return o;
+    })(),
     lot: document.getElementById('m-lot').value.trim(),
     batch: document.getElementById('m-lot').value.trim(),
     spec: document.getElementById('m-spec').value.trim(),
@@ -774,7 +778,12 @@ function setVal(id, val) {
 function showRes(info) {
   setVal('s-name', info.name||'');
   setVal('s-date', today());
-  setVal('s-order', info.order||'');
+  var rawOrder = info.order||'';
+  // Normalize GOPO format: always "GOPO 숫자/숫자" (remove dashes, ensure single space)
+  if(rawOrder.toUpperCase().startsWith('GOPO')) {
+    rawOrder = rawOrder.replace(/^GOPO[-\s]*/i, 'GOPO ').replace(/\s+/, ' ').trim();
+  }
+  setVal('s-order', rawOrder);
   setVal('s-lot', info.lot || (!info.lot && info.batch ? info.batch : ''));
   setVal('s-partner', info.partner||'');
   setVal('s-spec', info.spec||'');
@@ -823,7 +832,11 @@ function regScan(forceType) {
     type,
     name,
     partner: document.getElementById('s-partner').value.trim(),
-    order: document.getElementById('s-order').value.trim(),
+    order: (function(){
+      var o = document.getElementById('s-order').value.trim();
+      if(o.toUpperCase().startsWith('GOPO')) o = o.replace(/^GOPO[-\s]*/i,'GOPO ').trim();
+      return o;
+    })(),
     lot: document.getElementById('s-lot').value.trim(),
     batch: document.getElementById('s-lot').value.trim(),
     spec: document.getElementById('s-spec').value.trim(),
