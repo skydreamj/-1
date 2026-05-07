@@ -655,6 +655,10 @@ function addManual() {
     note: document.getElementById('m-note').value.trim(),
     history:[]
   });
+  var mLot = document.getElementById('m-lot').value.trim();
+  if(mLot && checkDuplicateLot(mLot, null)) {
+    if(!confirm('⚠ LOT/BATCH "'+mLot+'" 이 이미 등록되어 있습니다.\n중복 등록하시겠습니까?')) return;
+  }
   save(); updateKPIs();
   pushToSheets('add', records[0]);
   renderLog();
@@ -707,11 +711,11 @@ async function callAI(b64, mime) {
   var prompt = 'You are an expert OCR reader for a metal products warehouse. Analyze this tag/label image carefully. Respond ONLY with a raw JSON object, no markdown, no extra text.\n\n'
   + 'STRICT RULES:\n'
   + '1. PRODUCT NAME (name): Use EXACT standard names below. Do NOT add extra words:\n'
-  + '   - ASBW brand → "ASBW BRASS ROUND ROD " + outer diameter from spec (e.g. "ASBW BRASS ROUND ROD R10.50")\n'
-  + '   - ELVALHALCOR brand → "ELVALHALCOR BRASS ROD " + outer diameter ONLY (e.g. "ELVALHALCOR BRASS ROD R10.69")\n'
+  + '   - ASBW brand → "ASBW BRASS ROD " + outer diameter (e.g. "ASBW BRASS ROD R10.50"). Always use BRASS ROD, never BRASS ROUND ROD.\n'
+  + '   - ELVALHALCOR brand → "ELVALHALCOR BRASS ROD " + outer diameter ONLY (e.g. "ELVALHALCOR BRASS ROD R10.69"). Always BRASS ROD not BRASS ROUND ROD.\n'
   + '     From DESCRIPTION field, extract R-number only: "R010,69x3025" → use only "R10.69" (remove leading zeros, comma→dot, IGNORE x3025 width)\n'
-  + '   - ARCONIC brand → "ARCONIC ALUMINUM SHEET " + thickness ONLY (e.g. "ARCONIC ALUMINUM SHEET 1.5T")\n'
-  + '     Extract thickness: the number BEFORE first + sign in spec. e.g. "1.5+.045/-.045*..." → 1.5T\n'
+  + '   - ARCONIC brand → "ARCONIC ALUMINUM SHEET " + thickness with T suffix (e.g. "ARCONIC ALUMINUM SHEET 1.5T" or "ARCONIC ALUMINUM SHEET 2.8T")\n'
+  + '     Thickness is the FIRST number in dimension string (before first +). Common: 1.5T, 2.8T. Must include T suffix.\n'
   + '2. PARTNER (partner): Short manufacturer name only:\n'
   + '   - ASBW → "ASBW"\n'
   + '   - ELVALHALCOR or ELVALHAL → "ELVALHALCOR SA"\n'
@@ -722,13 +726,13 @@ async function callAI(b64, mime) {
   + '   - GOPO format examples: GOPO 25/41, GOPO-24/50, GOPO25/41. Always normalize to "GOPO 숫자/숫자" format (e.g. "GOPO 25/41").\n'
   + '   - Normalization rule: remove dashes/spaces between GOPO and numbers, always use single space: "GOPO 25/41" not "GOPO-25/41" or "GOPO25/41"\n'
   + '   - If you see GOPO anywhere on the tag, extract it. If NO GOPO found anywhere → null.\n'
-  + '4. LOT/BATCH (lot): \n'
-  + '   - ARCONIC tags: LOT NR is R+numbers located at BOTTOM RIGHT of tag, below the barcode. e.g. R-1234567 or R1234567.\n'
-  + '     Look specifically at bottom-right area under barcode for R followed by digits. This is the LOT NR.\n'
-  + '   - ASBW tags: LOT NR is "Lot Nr." value. Also find "Bundle Nr." - its number is located BELOW the Bundle Nr. label.\n'
-  + '     Combine as: LOT_VALUE + "-" + BUNDLE_NUMBER (e.g. Lot Nr.=E250349.2517853, Bundle Nr.=1 → "E250349.2517853-1")\n'
-  + '   - Other brands: LOT NR. first, if none then BATCH NR., if neither then null.\n'
-  + '   - ARCONIC spec: In ITEM DESCRIPTION field, find the dimension string after alloy/temper code.\n'
+  + '4. LOT/BATCH (lot): Be VERY careful - only use clearly labeled LOT NR or BATCH NR values.\n'
+  + '   - ARCONIC tags: LOT NR is R+numbers at BOTTOM RIGHT under barcode. ONLY use value explicitly labeled as LOT.\n'
+  + '   - Do NOT use order numbers, alloy codes, or other reference numbers as LOT/BATCH.\n'
+  + '   - ASBW tags: LOT NR is "Lot Nr." value + "-" + Bundle Nr. number (below Bundle Nr. label).\n'
+  + '     Example: Lot Nr.=E250349.2517853, Bundle Nr.=1 → "E250349.2517853-1"\n'
+  + '   - ELVALHALCOR tags: LOT or BATCH is clearly labeled field. Use ONLY that field value.\n'
+  + '   - If no clearly labeled LOT NR or BATCH NR found → set null. Do not guess.\n'
   + '     Dimension string pattern: thickness+tol/-tol * width,decimal+tol/-tol * length+tol/-tol\n'
   + '     Common sizes for reference (use these if dimension string is unclear):\n'
   + '       If DESCRIPTION contains "1.5" or "1.5+" → likely 1.5Tx1360x2365\n'
@@ -863,6 +867,10 @@ function regScan(forceType) {
     registeredAt: new Date().toLocaleString('ko-KR'),
     history:[]
   });
+  var lotVal = document.getElementById('s-lot').value.trim();
+  if(lotVal && checkDuplicateLot(lotVal, null)) {
+    if(!confirm('⚠ LOT/BATCH "'+lotVal+'" 이 이미 등록되어 있습니다.\n중복 등록하시겠습니까?')) return;
+  }
   save(); updateKPIs();
   pushToSheets('add', records[0]);
   renderLog();
@@ -879,6 +887,13 @@ function resetScan() {
 }
 
 // ── DELETE ──
+function checkDuplicateLot(lot, excludeId) {
+  if(!lot) return false;
+  return records.some(function(r) {
+    return r.lot && r.lot === lot && r.id !== excludeId;
+  });
+}
+
 function deleteRecord(id) {
   const r = records.find(x=>x.id===id);
   if(!r) return;
