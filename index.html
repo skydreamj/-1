@@ -742,14 +742,16 @@ async function callAI(b64, mime) {
   + '     Example: "2.8+.045/-.045*1416,0+1/-1*2484+2/-2" → 2.8T x 1416 x 2484 → "2.8Tx1416x2484"\n'
   + '     Output format: THICKNESSTxWIDTHxLENGTH (T suffix, x separator, no spaces)\n'
   + '     Convert "R010,69x3025" → "R10.69x3025" (remove leading zeros, replace comma with dot). Ignore all other text.\n'
-  + '   - Other specs: extract only the core dimension value (e.g. R10.50x3000), ignore surrounding text.\n'
+  + '   - ASBW tags: spec is in "DIMENSIONS (mm)" field. Read ONLY from that field (e.g. R10.50x3000, R10.69x3000).\n'
+  + '     Do NOT use values from "ASBW MATERIAL CODE" or any code fields below dimensions. Ignore those completely.\n'
+  + '     Format: R[diameter]x[length] exactly as shown in DIMENSIONS field.\n'
   + '7. QTY (qty): \n'
   + '   - ARCONIC: find label showing Slits, pieces, or Chinese slit characters on tag. Number next to/below it = qty.\n'
   + '   - ASBW/ELVALHALCOR BRASS ROD: if qty not shown, calculate ceil(netweight / divisor)\n'
   + '     R10.50 → divisor=2.11008, R10.69 → divisor=2.18714, other sizes → 2.18714\n'
   + '   - Other brands: count of pieces/coils/rods. If not shown, calculate ceil(netweight/2.18714)\n'
   + '\nReturn this exact JSON:\n'
-  + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + today + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":"other info"}';
+  + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + today + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":null}';
 
   let res;
   try {
@@ -821,7 +823,7 @@ function showRes(info) {
     setVal('s-qty', Math.ceil(snw / getDivisor('s')));
   }
   setVal('s-type', info.type||'in');
-  setVal('s-note', info.note||'');
+  setVal('s-note', '');  // 메모는 수기 입력
 
   const chips = [];
   if(info.price) chips.push('<span class="chip g">₩'+Number(info.price).toLocaleString()+'</span>');
