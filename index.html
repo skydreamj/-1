@@ -1194,6 +1194,12 @@ function init() {
   document.getElementById('s-date') && (document.getElementById('s-date').value = today());
 }
 checkAuth();
+// 5분마다 자동 동기화
+setInterval(function() {
+  if(sessionStorage.getItem(PW_KEY) === '1') {
+    syncFromSheets();
+  }
+}, 5 * 60 * 1000);
 </script>
 </body>
 </html>
