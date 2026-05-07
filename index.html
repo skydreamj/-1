@@ -553,11 +553,20 @@ function nav(pg, el) {
 }
 
 // ── AUTO CALC QTY ──
+function getDivisor(prefix) {
+  var name = (document.getElementById(prefix+'-name')||{}).value||'';
+  name = name.toUpperCase();
+  if (name.includes('R10.50')) return 2.11008;
+  if (name.includes('R10.69')) return 2.18714;
+  // Default for other ASBW/ELVALHALCOR rods
+  return 2.18714;
+}
+
 function autoCalcQty(prefix) {
-  const nw = parseFloat(document.getElementById(prefix+'-netweight').value);
-  const qty = document.getElementById(prefix+'-qty');
+  var nw = parseFloat(document.getElementById(prefix+'-netweight').value);
+  var qty = document.getElementById(prefix+'-qty');
   if (nw > 0 && (!qty.value || qty.value == 1)) {
-    qty.value = Math.ceil(nw / 2.18714);
+    qty.value = Math.ceil(nw / getDivisor(prefix));
   }
 }
 
@@ -728,6 +737,8 @@ async function callAI(b64, mime) {
   + '   - Other specs: extract only the core dimension value (e.g. R10.50x3000), ignore surrounding text.\n'
   + '7. QTY (qty): \n'
   + '   - ARCONIC: find label showing Slits, pieces, or Chinese slit characters on tag. Number next to/below it = qty.\n'
+  + '   - ASBW/ELVALHALCOR BRASS ROD: if qty not shown, calculate ceil(netweight / divisor)\n'
+  + '     R10.50 → divisor=2.11008, R10.69 → divisor=2.18714, other sizes → 2.18714\n'
   + '   - Other brands: count of pieces/coils/rods. If not shown, calculate ceil(netweight/2.18714)\n'
   + '\nReturn this exact JSON:\n'
   + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + today + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":"other info"}';
@@ -795,11 +806,11 @@ function showRes(info) {
   var rawUnit = (info.unit||'PIECES').toUpperCase();
   var matchedUnit = units.find(u => rawUnit.includes(u)) || 'PIECES';
   setVal('s-unit', matchedUnit);
-  // Auto-calc qty if no qty but has netweight (ASBW: netweight / 2.18714, ceiling)
+  // Auto-calc qty if no qty but has netweight
   var sqty = parseInt((document.getElementById('s-qty')||{}).value||'1');
   var snw = parseFloat((document.getElementById('s-netweight')||{}).value||'0');
   if ((!sqty || sqty <= 1) && snw > 0) {
-    setVal('s-qty', Math.ceil(snw / 2.18714));
+    setVal('s-qty', Math.ceil(snw / getDivisor('s')));
   }
   setVal('s-type', info.type||'in');
   setVal('s-note', info.note||'');
