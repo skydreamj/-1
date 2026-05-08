@@ -669,12 +669,34 @@ function addManual() {
 }
 
 // ── SCAN ──
+function compressImage(dataUrl, maxSize, quality) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var w = img.width, h = img.height;
+      // Scale down if larger than maxSize
+      if(w > maxSize || h > maxSize) {
+        if(w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
 function handleFile(e) {
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = async ev => {
-    const b64 = ev.target.result.split(',')[1];
-    const mime = file.type||'image/jpeg';
+    const compressed = await compressImage(ev.target.result, 1200, 0.75);
+    const b64 = compressed.split(',')[1];
+    const mime = 'image/jpeg';
     document.getElementById('cam-zone').style.display='none';
     document.getElementById('scan-err').style.display='none';
     document.getElementById('scan-res').style.display='none';
@@ -771,7 +793,7 @@ async function callAI(b64, mime) {
             { type: 'text', text: prompt }
           ]
         }],
-        max_tokens: 2048,
+        max_tokens: 1200,
         temperature: 0.1
       })
     });
