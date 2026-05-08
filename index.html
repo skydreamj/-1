@@ -1117,7 +1117,7 @@ function renderStock() {
         +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
       +'</div>'
       +'<div class="stock-sub">누적입고 '+(Math.round(tinw[k]*100)/100)+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
-      +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">입고 '+inSets[k]+' set'+(outSets[k]>0?' · 출고 '+outSets[k]+' set':'')+'</div>'
+      +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">입고 '+inSets[k]+' set'+(outSets[k]>0?' · 출고 '+outSets[k]+' set':'')+' · <span style="color:var(--grn);">잔여 '+(inSets[k]-outSets[k])+' set</span></div>'
       +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
     +'</div>';
   }).join('');
