@@ -130,8 +130,8 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .empty{text-align:center;padding:40px;color:var(--t3);font-size:13px;}
 
 /* EDIT MODAL */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:flex-end;}
-.modal{background:var(--s1);border-radius:var(--r) var(--r) 0 0;border-top:0.5px solid var(--b2);width:100%;max-height:92vh;height:92vh;overflow-y:auto;padding:20px 16px 40px;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:var(--s1);border-radius:var(--r) var(--r) 0 0;border-top:0.5px solid var(--b2);width:100%;max-width:100vw;max-height:92vh;height:92vh;overflow-y:auto;padding:20px 16px 40px;box-sizing:border-box;}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .modal-title{font-size:16px;font-weight:700;}
 .modal-close{width:30px;height:30px;background:var(--s2);border:none;border-radius:50%;color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -771,7 +771,7 @@ async function callAI(b64, mime) {
             { type: 'text', text: prompt }
           ]
         }],
-        max_tokens: 1024,
+        max_tokens: 2048,
         temperature: 0.1
       })
     });
