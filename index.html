@@ -656,8 +656,8 @@ function addManual() {
     history:[]
   });
   var mLot = document.getElementById('m-lot').value.trim();
-  if(mLot && checkDuplicateLot(mLot, null)) {
-    if(!confirm('⚠ LOT/BATCH "'+mLot+'" 이 이미 등록되어 있습니다.\n중복 등록하시겠습니까?')) return;
+  if(mLot && checkDuplicateLot(mLot, null, mType)) {
+    if(!confirm('⚠ LOT/BATCH "'+mLot+'" 이 이미 입고 등록되어 있습니다.\n중복 입고하시겠습니까?')) return;
   }
   save(); updateKPIs();
   pushToSheets('add', records[0]);
@@ -727,7 +727,11 @@ async function callAI(b64, mime) {
   + '   - Normalization rule: remove dashes/spaces between GOPO and numbers, always use single space: "GOPO 25/41" not "GOPO-25/41" or "GOPO25/41"\n'
   + '   - If you see GOPO anywhere on the tag, extract it. If NO GOPO found anywhere → null.\n'
   + '4. LOT/BATCH (lot): Be VERY careful - only use clearly labeled LOT NR or BATCH NR values.\n'
-  + '   - ARCONIC tags: LOT NR is R+numbers at BOTTOM RIGHT under barcode. ONLY use value explicitly labeled as LOT.\n'
+  + '   - ARCONIC tags: LOT NR is ONLY the value starting with R followed by digits (e.g. R-1234567, R1234567).\n'
+  + '     Location: bottom-right corner of tag, BELOW the barcode. It looks like "R" + 7 digits.\n'
+  + '     CRITICAL: "OUR ORDER NO." or "ORDER NO." is NOT the LOT NR. Never use order numbers as LOT.\n'
+  + '     CRITICAL: GOPO numbers are ORDER#, not LOT. Do NOT put GOPO values in lot field.\n'
+  + '     If you cannot clearly see R+digits at bottom-right → set lot to null. Do not substitute other values.\n'
   + '   - Do NOT use order numbers, alloy codes, or other reference numbers as LOT/BATCH.\n'
   + '   - ASBW tags: LOT NR is "Lot Nr." value + "-" + Bundle Nr. number (below Bundle Nr. label).\n'
   + '     Example: Lot Nr.=E250349.2517853, Bundle Nr.=1 → "E250349.2517853-1"\n'
@@ -870,8 +874,8 @@ function regScan(forceType) {
     history:[]
   });
   var lotVal = document.getElementById('s-lot').value.trim();
-  if(lotVal && checkDuplicateLot(lotVal, null)) {
-    if(!confirm('⚠ LOT/BATCH "'+lotVal+'" 이 이미 등록되어 있습니다.\n중복 등록하시겠습니까?')) return;
+  if(lotVal && checkDuplicateLot(lotVal, null, type)) {
+    if(!confirm('⚠ LOT/BATCH "'+lotVal+'" 이 이미 입고 등록되어 있습니다.\n중복 입고하시겠습니까?')) return;
   }
   save(); updateKPIs();
   pushToSheets('add', records[0]);
@@ -889,10 +893,13 @@ function resetScan() {
 }
 
 // ── DELETE ──
-function checkDuplicateLot(lot, excludeId) {
+function checkDuplicateLot(lot, excludeId, newType) {
   if(!lot) return false;
+  // Only warn if same LOT is already registered as 입고 (in)
+  // 출고(out) with same LOT is normal (it's consuming existing stock)
+  if(newType === 'out') return false;
   return records.some(function(r) {
-    return r.lot && r.lot === lot && r.id !== excludeId;
+    return r.lot && r.lot === lot && r.type === 'in' && r.id !== excludeId;
   });
 }
 
