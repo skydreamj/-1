@@ -1089,14 +1089,14 @@ function saveEdit() {
 
 // ── STOCK ──
 function renderStock() {
-  var stock={}, tin={}, snw={}, tinw={}, wunits={}, units={}, partners={};
+  var stock={}, tin={}, snw={}, tinw={}, wunits={}, units={}, partners={}, inSets={}, outSets={};
   records.forEach(function(r) {
     var nm = r.name||'(이름없음)';
-    if(!stock[nm]){stock[nm]=0;tin[nm]=0;snw[nm]=0;tinw[nm]=0;units[nm]=r.unit||'PIECES';wunits[nm]=r.weightunit||'KG';partners[nm]=r.partner||'';}
+    if(!stock[nm]){stock[nm]=0;tin[nm]=0;snw[nm]=0;tinw[nm]=0;units[nm]=r.unit||'PIECES';wunits[nm]=r.weightunit||'KG';partners[nm]=r.partner||'';inSets[nm]=0;outSets[nm]=0;}
     var q = Number(r.qty)||0;
     var nw = parseFloat(r.netweight)||0;
-    if(r.type==='in'){stock[nm]+=q;tin[nm]+=q;snw[nm]+=nw;tinw[nm]+=nw;}
-    else{stock[nm]-=q;snw[nm]-=nw;}
+    if(r.type==='in'){stock[nm]+=q;tin[nm]+=q;snw[nm]+=nw;tinw[nm]+=nw;inSets[nm]++;}
+    else{stock[nm]-=q;snw[nm]-=nw;outSets[nm]++;}
   });
   var items = Object.keys(stock).sort(function(a,b){return snw[b]-snw[a];});
   var el = document.getElementById('stock-list');
@@ -1117,6 +1117,7 @@ function renderStock() {
         +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
       +'</div>'
       +'<div class="stock-sub">누적입고 '+(Math.round(tinw[k]*100)/100)+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
+      +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">입고 '+inSets[k]+' set'+(outSets[k]>0?' · 출고 '+outSets[k]+' set':'')+'</div>'
       +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
     +'</div>';
   }).join('');
