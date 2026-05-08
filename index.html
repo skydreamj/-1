@@ -785,7 +785,7 @@ async function callAI(b64, mime) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'openrouter/auto',
+        model: 'anthropic/claude-3-5-haiku',
         messages: [{
           role: 'user',
           content: [
