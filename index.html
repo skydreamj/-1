@@ -735,7 +735,11 @@ async function callAI(b64, mime) {
   + '1. PRODUCT NAME (name): Use EXACT standard names below. Do NOT add extra words:\n'
   + '   - ASBW brand → "ASBW BRASS ROD " + outer diameter (e.g. "ASBW BRASS ROD R10.50"). Always use BRASS ROD, never BRASS ROUND ROD.\n'
   + '   - ELVALHALCOR brand → "ELVALHALCOR BRASS ROD " + outer diameter ONLY (e.g. "ELVALHALCOR BRASS ROD R10.69"). Always BRASS ROD not BRASS ROUND ROD.\n'
-  + '     From DESCRIPTION field, extract R-number only: "R010,69x3025" → use only "R10.69" (remove leading zeros, comma→dot, IGNORE x3025 width)\n'
+  + '   - ELVALHALCOR tags: spec is in "DESCRIPTION" field. Format: "R010,69x3025" → "R10.69x3025"\n'
+  + '     Rule: remove leading zeros from R-number, replace comma with dot for decimal. Keep length as-is.\n'
+  + '     Examples: R010,50x3000 → R10.50x3000 / R010,69x3025 → R10.69x3025\n'
+  + '     NET WEIGHT for ELVALHALCOR: always INTEGER (no decimal). If you see decimal like 1202.0 → use 1202\n'
+  + '     If spec not clearly visible in DESCRIPTION field → set null, do not guess.\n'
   + '   - ARCONIC brand → "ARCONIC ALUMINUM SHEET " + thickness with T suffix (e.g. "ARCONIC ALUMINUM SHEET 1.5T" or "ARCONIC ALUMINUM SHEET 2.8T")\n'
   + '     Thickness is the FIRST number in dimension string (before first +). Common: 1.5T, 2.8T. Must include T suffix.\n'
   + '2. PARTNER (partner): Short manufacturer name only:\n'
@@ -835,7 +839,11 @@ function showRes(info) {
   setVal('s-partner', info.partner||'');
   setVal('s-spec', info.spec||'');
   setVal('s-qty', info.qty||1);
-  setVal('s-netweight', info.netweight||'');
+  // ELVALHALCOR: netweight should be integer (strip .0 decimals)
+  var nwVal = info.netweight ? String(info.netweight) : '';
+  if(nwVal.endsWith('.0')) nwVal = nwVal.slice(0,-2);
+  if(nwVal && !isNaN(nwVal)) nwVal = String(Math.round(parseFloat(nwVal)));
+  setVal('s-netweight', nwVal);
   var wu = (info.weightunit||'KG').toUpperCase();
   setVal('s-weightunit', wu.includes('LBS') ? 'LBS' : 'KG');
   var units = ['PIECES','SHEETS','COILS','ROLLS','EA'];
