@@ -826,11 +826,20 @@ function setVal(id, val) {
 }
 
 function showRes(info) {
-  // Normalize product name: comma→dot in R-number, remove length part
-  var nm = info.name||'';
-  nm = nm.replace(/R(\d+),(\d+)(x\d+)?/gi, function(m, a, b) { return 'R'+a+'.'+b; });
-  nm = nm.replace(/\s+R(\d+\.\d+)x\d+$/i, function(m, r) { return ' '+r.replace(/x\d+$/,''); });
+  // Normalize R-number: comma→dot for ALL R-numbers (R10,50 → R10.50, R10,69 → R10.69)
+  function normalizeR(str) {
+    if(!str) return str;
+    // comma to dot in R-numbers: R10,50 → R10.50
+    str = str.replace(/R(\d+),(\d+)/gi, function(m, a, b) { return 'R'+a+'.'+b; });
+    return str;
+  }
+  var nm = normalizeR(info.name||'');
+  // Remove length from product name (e.g. R10.69x3025 → R10.69)
+  nm = nm.replace(/(\s+R\d+\.\d+)x\d+/i, function(m, r) { return r; });
   setVal('s-name', nm);
+  // Also normalize spec field
+  var sp = normalizeR(info.spec||'');
+  info.spec = sp;
   setVal('s-date', today());
   var rawOrder = info.order||'';
   // Normalize GOPO format: always "GOPO 숫자/숫자" (remove dashes, ensure single space)
@@ -838,7 +847,7 @@ function showRes(info) {
     rawOrder = rawOrder.replace(/^GOPO[-\s]*/i, 'GOPO ').replace(/\s+/, ' ').trim();
   }
   setVal('s-order', rawOrder);
-  setVal('s-lot', info.lot || (!info.lot && info.batch ? info.batch : ''));
+  setVal('s-lot', normalizeR(info.lot || (!info.lot && info.batch ? info.batch : '')));
   setVal('s-partner', info.partner||'');
   setVal('s-spec', info.spec||'');
   setVal('s-qty', info.qty||1);
