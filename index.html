@@ -656,9 +656,6 @@ function addManual() {
     history:[]
   });
   var mLot = document.getElementById('m-lot').value.trim();
-  if(mLot && checkDuplicateLot(mLot, null, mType)) {
-    if(!confirm('⚠ LOT/BATCH "'+mLot+'" 이 이미 입고 등록되어 있습니다.\n중복 입고하시겠습니까?')) return;
-  }
   save(); updateKPIs();
   pushToSheets('add', records[0]);
   renderLog();
@@ -734,8 +731,8 @@ async function callAI(b64, mime) {
   + 'STRICT RULES:\n'
   + '1. PRODUCT NAME (name): Use EXACT standard names below. Do NOT add extra words:\n'
   + '   - ASBW brand → "ASBW BRASS ROD " + outer diameter (e.g. "ASBW BRASS ROD R10.50"). Always use BRASS ROD, never BRASS ROUND ROD.\n'
-  + '   - ELVALHALCOR brand → "ELVALHALCOR BRASS ROD " + outer diameter ONLY (e.g. "ELVALHALCOR BRASS ROD R10.69"). Always BRASS ROD not BRASS ROUND ROD.\n'
-  + '   - ELVALHALCOR tags: spec is in "DESCRIPTION" field. Format: "R010,69x3025" → "R10.69x3025"\n'
+  + '   - ELVALHALCOR brand → "ELVALHALCOR BRASS ROD " + outer diameter ONLY, NO length (e.g. "ELVALHALCOR BRASS ROD R10.69")\n'
+  + '     Extract R-number: "R010,69x3025" → use ONLY "R10.69" (comma→dot, NO x3025 length part)\n'
   + '     Rule: remove leading zeros from R-number, replace comma with dot for decimal. Keep length as-is.\n'
   + '     Examples: R010,50x3000 → R10.50x3000 / R010,69x3025 → R10.69x3025\n'
   + '     NET WEIGHT for ELVALHALCOR: always INTEGER (no decimal). If you see decimal like 1202.0 → use 1202\n'
@@ -761,7 +758,9 @@ async function callAI(b64, mime) {
   + '   - Do NOT use order numbers, alloy codes, or other reference numbers as LOT/BATCH.\n'
   + '   - ASBW tags: LOT NR is "Lot Nr." value + "-" + Bundle Nr. number (below Bundle Nr. label).\n'
   + '     Example: Lot Nr.=E250349.2517853, Bundle Nr.=1 → "E250349.2517853-1"\n'
-  + '   - ELVALHALCOR tags: LOT or BATCH is clearly labeled field. Use ONLY that field value.\n'
+  + '   - ELVALHALCOR tags: LOT or BATCH is clearly labeled field. Read COMPLETE value including trailing letters.\n'
+  + '     CRITICAL: BATCH NR always ends with a letter (e.g. 0611-16-A, 1301-59-A, 1201-30-B). The FINAL LETTER is mandatory.\n'
+  + '     Do not stop reading at last hyphen. Always include the letter after last hyphen.\n'
   + '   - If no clearly labeled LOT NR or BATCH NR found → set null. Do not guess.\n'
   + '     Dimension string pattern: thickness+tol/-tol * width,decimal+tol/-tol * length+tol/-tol\n'
   + '     Common sizes for reference (use these if dimension string is unclear):\n'
@@ -827,7 +826,11 @@ function setVal(id, val) {
 }
 
 function showRes(info) {
-  setVal('s-name', info.name||'');
+  // Normalize product name: comma→dot in R-number, remove length part
+  var nm = info.name||'';
+  nm = nm.replace(/R(\d+),(\d+)(x\d+)?/gi, function(m, a, b) { return 'R'+a+'.'+b; });
+  nm = nm.replace(/\s+R(\d+\.\d+)x\d+$/i, function(m, r) { return ' '+r.replace(/x\d+$/,''); });
+  setVal('s-name', nm);
   setVal('s-date', today());
   var rawOrder = info.order||'';
   // Normalize GOPO format: always "GOPO 숫자/숫자" (remove dashes, ensure single space)
@@ -904,9 +907,6 @@ function regScan(forceType) {
     history:[]
   });
   var lotVal = document.getElementById('s-lot').value.trim();
-  if(lotVal && checkDuplicateLot(lotVal, null, type)) {
-    if(!confirm('⚠ LOT/BATCH "'+lotVal+'" 이 이미 입고 등록되어 있습니다.\n중복 입고하시겠습니까?')) return;
-  }
   save(); updateKPIs();
   pushToSheets('add', records[0]);
   renderLog();
