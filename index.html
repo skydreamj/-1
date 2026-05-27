@@ -130,8 +130,13 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .empty{text-align:center;padding:40px;color:var(--t3);font-size:13px;}
 
 /* EDIT MODAL */
-.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:100;display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
-.modal{background:var(--s1);border-radius:var(--r);border:0.5px solid var(--b2);width:100%;max-width:100%;height:100vh;max-height:100vh;overflow-y:auto;overflow-x:hidden;padding:24px 24px 60px;box-sizing:border-box;position:relative;}
+.overlay{display:none;}
+.modal{width:100%;height:100%;overflow-y:auto;overflow-x:hidden;padding:24px 20px 80px;box-sizing:border-box;background:var(--s1);}
+.edit-drawer{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:var(--s1);z-index:9998;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,80px) 0;box-sizing:border-box;}
+.edit-drawer-inner{padding:20px 20px 100px;max-width:600px;margin:0 auto;}
+.edit-drawer-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:12px;border-bottom:0.5px solid var(--b1);}
+.edit-drawer-title{font-size:18px;font-weight:700;}
+.edit-drawer-close{width:36px;height:36px;background:var(--s2);border:none;border-radius:50%;color:var(--t2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .modal-title{font-size:16px;font-weight:700;}
 .modal-close{width:30px;height:30px;background:var(--s2);border:none;border-radius:50%;color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -411,6 +416,56 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 <div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:5px;font-size:10px;color:var(--t3);font-family:'IBM Plex Mono',monospace;letter-spacing:0.1em;background:var(--bg);border-top:0.5px solid var(--b1);z-index:50;">
   Designed By <b style="color:#00e07a;">SDJ</b>
 </div>
+<!-- EDIT DRAWER - Full Screen -->
+<div class="edit-drawer" id="edit-drawer">
+  <div class="edit-drawer-inner">
+    <div class="edit-drawer-hdr">
+      <div class="edit-drawer-title">데이터 수정</div>
+      <button class="edit-drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="fg"><label>품목명 *</label><input id="e-name" type="text"/></div>
+    <div class="row2">
+      <div class="fg"><label>날짜 *</label><input id="e-date" type="date"/></div>
+      <div class="fg"><label>거래처</label><input id="e-partner" type="text"/></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Order #</label><input id="e-order" type="text" placeholder="GOPO-XXXXXX"/></div>
+      <div class="fg"><label>LOT NR & BATCH NR</label><input id="e-lot" type="text" placeholder="LOT / BATCH 번호"/></div>
+    </div>
+    <div class="fg"><label>규격</label><input id="e-spec" type="text"/></div>
+    <div class="row2">
+      <div class="fg"><label>NET 중량</label><input id="e-netweight" type="number" step="0.001" min="0"/></div>
+      <div class="fg"><label>중량 단위</label>
+        <select id="e-weightunit">
+          <option value="KG">KG</option>
+          <option value="LBS">LBS</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>수량 *</label><input id="e-qty" type="number" min="1"/></div>
+      <div class="fg"><label>수량 단위</label>
+        <select id="e-unit">
+          <option value="PIECES">PIECES</option>
+          <option value="SHEETS">SHEETS</option>
+          <option value="COILS">COILS</option>
+          <option value="ROLLS">ROLLS</option>
+          <option value="EA">EA</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>구분</label>
+      <select id="e-type"><option value="in">입고</option><option value="out">출고</option></select>
+    </div>
+    <div class="fg"><label>메모</label><input id="e-note" type="text"/></div>
+    <button class="submit-btn" onclick="saveEdit()" style="position:sticky;bottom:16px;">수정 저장</button>
+    <div class="hist-section">
+      <div class="hist-lbl">수정 이력</div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1028,11 +1083,6 @@ function renderLog() {
 function openEdit(id) {
   const r = records.find(x=>x.id===id); if(!r) return;
   editId = id;
-  // Move modal to body to avoid parent flex/transform issues
-  var modal = document.getElementById('modal');
-  if(modal.parentNode !== document.body) {
-    document.body.appendChild(modal);
-  }
   document.getElementById('e-name').value = r.name;
   document.getElementById('e-date').value = r.date;
   document.getElementById('e-partner').value = r.partner||'';
@@ -1060,7 +1110,7 @@ function openEdit(id) {
       return '<div class="hist-item"><b>'+(h.at||'')+'</b> 수정<br>'+changes+(h.memo?'<br>메모: '+h.memo:'')+'</div>';
     }).join('');
   }
-  document.getElementById('modal').style.display='flex';
+  document.getElementById('edit-drawer').style.display='block'; document.body.style.overflow='hidden';
 }
 
 function fieldLabel(k) {
@@ -1070,6 +1120,11 @@ function fieldLabel(k) {
 function closeModal(e) {
   if(e && e.target!==document.getElementById('modal')) return;
   document.getElementById('modal').style.display='none';
+  editId=null;
+}
+function closeDrawer() {
+  document.getElementById('edit-drawer').style.display='none';
+  document.body.style.overflow='';
   editId=null;
 }
 
@@ -1103,7 +1158,8 @@ function saveEdit() {
   Object.assign(r, nv);
   save(); updateKPIs();
   pushToSheets('update', r);
-  document.getElementById('modal').style.display='none';
+  document.getElementById('edit-drawer').style.display='none';
+  document.body.style.overflow='';
   editId=null;
   renderLog();
   toast('수정 완료 · 이력이 저장되었습니다','g');
