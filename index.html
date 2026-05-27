@@ -130,8 +130,8 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .empty{text-align:center;padding:40px;color:var(--t3);font-size:13px;}
 
 /* EDIT MODAL */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
-.modal{background:var(--s1);border-radius:var(--r) var(--r) 0 0;border-top:0.5px solid var(--b2);width:100%;max-width:100vw;max-height:92vh;height:92vh;overflow-y:auto;padding:20px 16px 40px;box-sizing:border-box;}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:flex-end;justify-content:center;width:100%;}
+.modal{background:var(--s1);border-radius:var(--r) var(--r) 0 0;border-top:0.5px solid var(--b2);width:100vw;max-width:100vw;min-width:0;max-height:92vh;height:92vh;overflow-y:auto;overflow-x:hidden;padding:20px 16px 40px;box-sizing:border-box;position:relative;left:0;}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .modal-title{font-size:16px;font-weight:700;}
 .modal-close{width:30px;height:30px;background:var(--s2);border:none;border-radius:50%;color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -371,7 +371,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 </div><!-- /app -->
 
 <!-- EDIT MODAL -->
-<div class="overlay" id="modal" style="display:none" onclick="closeModal(event)">
+<div class="overlay" id="modal" style="display:none;" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-hdr">
       <div class="modal-title">데이터 수정</div>
@@ -1028,6 +1028,11 @@ function renderLog() {
 function openEdit(id) {
   const r = records.find(x=>x.id===id); if(!r) return;
   editId = id;
+  // Move modal to body to avoid parent flex/transform issues
+  var modal = document.getElementById('modal');
+  if(modal.parentNode !== document.body) {
+    document.body.appendChild(modal);
+  }
   document.getElementById('e-name').value = r.name;
   document.getElementById('e-date').value = r.date;
   document.getElementById('e-partner').value = r.partner||'';
