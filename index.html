@@ -375,43 +375,6 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
   </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- EDIT MODAL -->
-<div class="overlay" id="modal" style="display:none;" onclick="closeModal(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-hdr">
-      <div class="modal-title">데이터 수정</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="fg"><label>품목명 *</label><input id="e-name" type="text"/></div>
-    <div class="row2">
-      <div class="fg"><label>날짜 *</label><input id="e-date" type="date"/></div>
-      <div class="fg"><label>거래처</label><input id="e-partner" type="text"/></div>
-    </div>
-    <div class="row2">
-      <div class="fg"><label>Order #</label><input id="e-order" type="text" placeholder="GOPO-XXXXXX"/></div>
-      <div class="fg"><label>LOT NR & BATCH NR</label><input id="e-lot" type="text" placeholder="LOT / BATCH 번호"/></div>
-    </div>
-    <div class="fg"><label>규격</label><input id="e-spec" type="text"/></div>
-      <div class="fg"><label>NET 중량</label><input id="e-netweight" type="number" step="0.001" min="0" placeholder="0.000"/></div>
-      <div class="fg"><label>중량 단위</label><select id="e-weightunit"><option value="KG">KG</option><option value="LBS">LBS</option></select></div>
-    </div>
-    <div class="row2">
-      <div class="fg"><label>수량 *</label><input id="e-qty" type="number" min="1"/></div>
-      <div class="fg"><label>단위</label><input id="e-unit" type="text"/></div>
-    </div>
-    <div class="fg"><label>구분</label>
-      <select id="e-type"><option value="in">입고</option><option value="out">출고</option></select>
-    </div>
-    <div class="fg"><label>메모</label><input id="e-note" type="text"/></div>
-    <button class="submit-btn" onclick="saveEdit()">수정 저장</button>
-    <div class="hist-section">
-      <div class="hist-lbl">수정 이력</div>
-      <div id="hist-list"></div>
-    </div>
-  </div>
-</div>
-
-
 </div><!-- /main-app -->
 <div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:5px;font-size:10px;color:var(--t3);font-family:'IBM Plex Mono',monospace;letter-spacing:0.1em;background:var(--bg);border-top:0.5px solid var(--b1);z-index:50;">
   Designed By <b style="color:#00e07a;">SDJ</b>
