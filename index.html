@@ -220,7 +220,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
         <div class="cam-sub">갤러리 선택도 가능 · JPG / PNG</div>
       </label>
       <div id="scan-ld" style="display:none">
-        <div class="ld-box"><div class="spin"></div><div class="ld-t">AI 분석 중... (Gemini 1.5 Flash)</div><div class="ld-s">날짜 · 거래처 · 규격 · 중량 추출 중</div></div>
+        <div class="ld-box"><div class="spin"></div><div class="ld-t" id="ld-model-txt">AI 분석 중...</div><div class="ld-s">날짜 · 거래처 · 규격 · 중량 추출 중</div></div>
       </div>
       <div id="scan-err" style="display:none" class="err-box">
         <div class="err-t" id="scan-err-t">인식 실패</div>
@@ -393,11 +393,33 @@ let fType = '';
 let mType = 'in';
 let editId = null;
 
-
 // ── Worker URL (Cloudflare) ──
 const WORKER_URL = 'https://lingering-moon-8748.skydreamj.workers.dev';
 // ── Google Sheets URL ──
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyutJq3cPtuJg-pIyJyuPTGJx4F2kSx3FAyEKBhhQcNNwMvNSfgGhkJ9Zywc2Id8tXYwg/exec';
+
+// ── AI 모델 Fallback 목록 (저렴한 순, 위에서부터 시도) ──
+// 모델이 폐기되거나 오류 시 자동으로 다음 모델로 전환됩니다
+const AI_MODELS = [
+  { id: 'meta-llama/llama-4-scout',              label: 'Llama 4 Scout'         },
+  { id: 'meta-llama/llama-4-maverick',           label: 'Llama 4 Maverick'      },
+  { id: 'google/gemini-3.1-flash-lite-preview',  label: 'Gemini 3.1 Flash Lite' },
+  { id: 'google/gemini-3-flash-preview',         label: 'Gemini 3 Flash'        },
+  { id: 'google/gemini-2.5-flash',               label: 'Gemini 2.5 Flash'      },
+];
+
+// 모델 오류로 건너뛸 HTTP 상태코드 / 에러 키워드
+function isModelUnavailable(status, msg) {
+  if ([400, 404, 422, 503].includes(status)) return true;
+  const lower = (msg||'').toLowerCase();
+  return lower.includes('not a valid model')
+      || lower.includes('no endpoints')
+      || lower.includes('not found')
+      || lower.includes('invalid model')
+      || lower.includes('model_not_found')
+      || lower.includes('unavailable')
+      || lower.includes('deprecated');
+}
 
 function load() {
   try { const s = localStorage.getItem(SK); if(s) records = JSON.parse(s); } catch(e){}
@@ -406,7 +428,7 @@ function load() {
 async function syncFromSheets() {
   toast('동기화 중...');
   try {
-    const res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev/sheets', {
+    const res = await fetch(WORKER_URL + '/sheets', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action: 'getAll'})
@@ -420,9 +442,7 @@ async function syncFromSheets() {
           date: (function(d) {
             if(!d) return '';
             var s = d.toString();
-            // Already YYYY-MM-DD format
             if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
-            // Date object or date string - parse and format
             try {
               var dt = new Date(s);
               if(!isNaN(dt)) {
@@ -467,7 +487,7 @@ async function syncFromSheets() {
 
 async function pushToSheets(action, record) {
   try {
-    await fetch('https://lingering-moon-8748.skydreamj.workers.dev/sheets', {
+    await fetch(WORKER_URL + '/sheets', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action, ...record})
@@ -526,7 +546,6 @@ function getDivisor(prefix) {
   name = name.toUpperCase();
   if (name.includes('R10.50')) return 2.11008;
   if (name.includes('R10.69')) return 2.18714;
-  // Default for other ASBW/ELVALHALCOR rods
   return 2.18714;
 }
 
@@ -540,7 +559,6 @@ function autoCalcQty(prefix) {
 
 // ── MANUAL ──
 function getStockList() {
-  // Group by LOT NR or BATCH, calc remaining qty
   const map = {};
   records.forEach(r => {
     var key = r.lot ? 'LOT:'+r.lot : r.batch ? 'BATCH:'+r.batch : r.name;
@@ -575,11 +593,9 @@ function fillFromStock(key) {
   const mwu = document.getElementById('m-weightunit');
   if(mwu) mwu.value = (s.weightunit||'KG');
   document.getElementById('m-unit').value = s.unit.toUpperCase().includes('KG') ? 'KG' : 'PIECES';
-  // Set max qty hint
-      document.getElementById('m-qty').placeholder = '최대 '+(Number(s.qty)||0).toLocaleString()+' '+s.unit;
+  document.getElementById('m-qty').placeholder = '최대 '+(Number(s.qty)||0).toLocaleString()+' '+s.unit;
   document.getElementById('m-qty').max = s.qty;
 }
-
 
 function setMT(t) {
   mType = t;
@@ -623,7 +639,6 @@ function addManual() {
     note: document.getElementById('m-note').value.trim(),
     history:[]
   });
-  var mLot = document.getElementById('m-lot').value.trim();
   save(); updateKPIs();
   pushToSheets('add', records[0]);
   renderLog();
@@ -640,7 +655,6 @@ function compressImage(dataUrl, maxSize, quality) {
     img.onload = function() {
       var canvas = document.createElement('canvas');
       var w = img.width, h = img.height;
-      // Scale down if larger than maxSize
       if(w > maxSize || h > maxSize) {
         if(w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
         else { w = Math.round(w * maxSize / h); h = maxSize; }
@@ -676,7 +690,6 @@ function handleFile(e) {
       document.getElementById('scan-err-t').textContent = '인식 실패 — 직접 입력하거나 다시 촬영해 주세요';
       document.getElementById('scan-err-s').textContent = err.message||'알 수 없는 오류';
       document.getElementById('scan-err').style.display='block';
-      // Still show form with empty fields for manual fill
       showRes({name:'',qty:1,unit:'개',date:today(),partner:'',spec:'',weight:'',type:'in',note:'',tags:[]});
     }
     e.target.value='';
@@ -693,8 +706,9 @@ function extractJSON(raw) {
   throw new Error('JSON 파싱 실패: '+raw.slice(0,100));
 }
 
+// ── AI 호출 (자동 Fallback) ──
 async function callAI(b64, mime) {
-  var today = new Date().toISOString().slice(0,10);
+  var todayStr = new Date().toISOString().slice(0,10);
   var prompt = 'You are an expert OCR reader for a metal products warehouse. Analyze this tag/label image carefully. Respond ONLY with a raw JSON object, no markdown, no extra text.\n\n'
   + 'STRICT RULES:\n'
   + '1. PRODUCT NAME (name): Use EXACT standard names below. Do NOT add extra words:\n'
@@ -748,25 +762,22 @@ async function callAI(b64, mime) {
   + '     R10.50 → divisor=2.11008, R10.69 → divisor=2.18714, other sizes → 2.18714\n'
   + '   - Other brands: count of pieces/coils/rods. If not shown, calculate ceil(netweight/2.18714)\n'
   + '\nReturn this exact JSON:\n'
-  + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + today + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":null}';
+  + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + todayStr + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":null}';
 
-  // 모델 우선순위 목록 - 404시 자동으로 다음 모델 시도
-  const MODELS = [
-    'google/gemini-2.5-flash',
-    'google/gemini-3-flash-preview',
-    'google/gemini-3.1-flash-lite-preview',
-    'meta-llama/llama-4-maverick'
-  ];
+  var lastError = '';
+  var ldTxt = document.getElementById('ld-model-txt');
 
-  let lastError = '';
-  for (let mi = 0; mi < MODELS.length; mi++) {
-    const modelName = MODELS[mi];
+  for (var mi = 0; mi < AI_MODELS.length; mi++) {
+    var model = AI_MODELS[mi];
+    if (ldTxt) ldTxt.textContent = 'AI 분석 중... (' + model.label + ')';
+    console.log('[AI] 시도:', model.id);
+
     try {
-      const res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev/ai', {
+      var res = await fetch(WORKER_URL + '/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: modelName,
+          model: model.id,
           messages: [{
             role: 'user',
             content: [
@@ -779,38 +790,58 @@ async function callAI(b64, mime) {
         })
       });
 
-      if(!res.ok) {
-        const j = await res.json().catch(()=>({}));
-        const em = j.error?.message || String(res.status);
-        if(res.status === 404 || em.includes('No endpoints') || em.includes('not found') || em.includes('invalid')) {
-          lastError = modelName + ' 사용불가';
-          console.warn('Model unavailable:', modelName, '→ 다음 모델 시도');
-          continue;
-        }
-        throw new Error('API 오류 (' + res.status + '): ' + em);
-      }
+      // 응답 본문 파싱
+      var data = {};
+      try { data = await res.json(); } catch(pe) { data = {}; }
 
-      const data = await res.json();
-      if(data.error) {
-        lastError = data.error.message;
-        console.warn('Model error:', modelName, data.error.message);
+      // 모델 자체 오류 메시지 추출
+      var errMsg = (data.error && (data.error.message || data.error.code || JSON.stringify(data.error))) || '';
+
+      // 모델 사용 불가 → 다음 모델로
+      if (!res.ok && isModelUnavailable(res.status, errMsg)) {
+        lastError = model.label + ' 사용불가 (' + res.status + ')';
+        console.warn('[AI] 모델 사용불가, 다음 시도:', model.id, res.status, errMsg);
         continue;
       }
-      const raw = (data.choices?.[0]?.message?.content) || '';
-      if(!raw) { lastError = '빈 응답'; continue; }
-      console.log('성공 모델:', modelName);
+
+      // 기타 HTTP 오류
+      if (!res.ok) {
+        throw new Error('API 오류 (' + res.status + '): ' + (errMsg || res.statusText));
+      }
+
+      // 응답에 error 필드가 있고 모델 관련 오류면 → 다음 모델로
+      if (data.error) {
+        if (isModelUnavailable(0, errMsg)) {
+          lastError = model.label + ' 오류: ' + errMsg;
+          console.warn('[AI] 모델 오류, 다음 시도:', model.id, errMsg);
+          continue;
+        }
+        throw new Error('API 오류: ' + errMsg);
+      }
+
+      var raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      if (!raw) {
+        lastError = model.label + ' 빈 응답';
+        console.warn('[AI] 빈 응답, 다음 시도:', model.id);
+        continue;
+      }
+
+      console.log('[AI] 성공:', model.id);
       return extractJSON(raw);
 
     } catch(ne) {
-      if(ne.message && (ne.message.includes('API 오류') || ne.message.includes('JSON'))) throw ne;
+      // throw된 오류는 그대로 전파 (모델 무관 오류)
+      if (ne.message && (ne.message.startsWith('API 오류') || ne.message.startsWith('JSON 파싱'))) {
+        throw ne;
+      }
       lastError = ne.message;
+      console.warn('[AI] 네트워크 오류, 다음 시도:', model.id, ne.message);
       continue;
     }
   }
+
   throw new Error('모든 모델 시도 실패. 마지막 오류: ' + lastError);
 }
-
-
 
 function setVal(id, val) {
   var el = document.getElementById(id);
@@ -818,23 +849,18 @@ function setVal(id, val) {
 }
 
 function showRes(info) {
-  // Normalize R-number: comma→dot for ALL R-numbers (R10,50 → R10.50, R10,69 → R10.69)
   function normalizeR(str) {
     if(!str) return str;
-    // comma to dot in R-numbers: R10,50 → R10.50
     str = str.replace(/R(\d+),(\d+)/gi, function(m, a, b) { return 'R'+a+'.'+b; });
     return str;
   }
   var nm = normalizeR(info.name||'');
-  // Remove length from product name (e.g. R10.69x3025 → R10.69)
   nm = nm.replace(/(\s+R\d+\.\d+)x\d+/i, function(m, r) { return r; });
   setVal('s-name', nm);
-  // Also normalize spec field
   var sp = normalizeR(info.spec||'');
   info.spec = sp;
   setVal('s-date', today());
   var rawOrder = info.order||'';
-  // Normalize GOPO format: always "GOPO 숫자/숫자" (remove dashes, ensure single space)
   if(rawOrder.toUpperCase().startsWith('GOPO')) {
     rawOrder = rawOrder.replace(/^GOPO[-\s]*/i, 'GOPO ').replace(/\s+/, ' ').trim();
   }
@@ -843,7 +869,6 @@ function showRes(info) {
   setVal('s-partner', info.partner||'');
   setVal('s-spec', info.spec||'');
   setVal('s-qty', info.qty||1);
-  // ELVALHALCOR: netweight should be integer (strip .0 decimals)
   var nwVal = info.netweight ? String(info.netweight) : '';
   if(nwVal.endsWith('.0')) nwVal = nwVal.slice(0,-2);
   if(nwVal && !isNaN(nwVal)) nwVal = String(Math.round(parseFloat(nwVal)));
@@ -854,14 +879,13 @@ function showRes(info) {
   var rawUnit = (info.unit||'PIECES').toUpperCase();
   var matchedUnit = units.find(u => rawUnit.includes(u)) || 'PIECES';
   setVal('s-unit', matchedUnit);
-  // Auto-calc qty if no qty but has netweight
   var sqty = parseInt((document.getElementById('s-qty')||{}).value||'1');
   var snw = parseFloat((document.getElementById('s-netweight')||{}).value||'0');
   if ((!sqty || sqty <= 1) && snw > 0) {
     setVal('s-qty', Math.ceil(snw / getDivisor('s')));
   }
   setVal('s-type', info.type||'in');
-  setVal('s-note', '');  // 메모는 수기 입력
+  setVal('s-note', '');
 
   const chips = [];
   if(info.price) chips.push('<span class="chip g">₩'+Number(info.price).toLocaleString()+'</span>');
@@ -907,7 +931,6 @@ function regScan(forceType) {
     registeredAt: new Date().toLocaleString('ko-KR'),
     history:[]
   });
-  var lotVal = document.getElementById('s-lot').value.trim();
   save(); updateKPIs();
   pushToSheets('add', records[0]);
   renderLog();
@@ -926,8 +949,6 @@ function resetScan() {
 // ── DELETE ──
 function checkDuplicateLot(lot, excludeId, newType) {
   if(!lot) return false;
-  // Only warn if same LOT is already registered as 입고 (in)
-  // 출고(out) with same LOT is normal (it's consuming existing stock)
   if(newType === 'out') return false;
   return records.some(function(r) {
     return r.lot && r.lot === lot && r.type === 'in' && r.id !== excludeId;
@@ -938,7 +959,6 @@ function deleteRecord(id) {
   const r = records.find(x=>x.id===id);
   if(!r) return;
   if(!confirm('"'+r.name+'" ('+r.id+') 를 삭제할까요?\n이 작업은 되돌릴 수 없어요.')) return;
-
   records = records.filter(x=>x.id!==id);
   save();
   updateKPIs();
@@ -1221,7 +1241,6 @@ function toast(msg, cls='') {
 
 // ── PASSWORD ──
 var PW_KEY = 'invpro_auth_v1';
-// 비밀번호 변경하려면 아래 값을 수정하세요
 var APP_PASSWORD = 'gaon1234';
 
 function checkPw() {
@@ -1260,7 +1279,6 @@ function init() {
   document.getElementById('s-date') && (document.getElementById('s-date').value = today());
 }
 checkAuth();
-// 5분마다 자동 동기화
 setInterval(function() {
   if(sessionStorage.getItem(PW_KEY) === '1') {
     syncFromSheets();
