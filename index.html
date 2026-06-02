@@ -752,10 +752,10 @@ async function callAI(b64, mime) {
 
   // 모델 우선순위 목록 - 404시 자동으로 다음 모델 시도
   const MODELS = [
-    'google/gemini-2.5-flash-preview',
-    'google/gemini-2.5-flash-preview-05-20',
-    'meta-llama/llama-4-maverick',
-    'google/gemini-2.0-flash-lite-001'
+    'google/gemini-2.5-flash',
+    'google/gemini-3-flash-preview',
+    'google/gemini-3.1-flash-lite-preview',
+    'meta-llama/llama-4-maverick'
   ];
 
   let lastError = '';
