@@ -750,40 +750,64 @@ async function callAI(b64, mime) {
   + '\nReturn this exact JSON:\n'
   + '{"name":"product name per rules above","qty":number,"unit":"PIECES or SHEETS or COILS or ROLLS","date":"' + today + '","partner":"manufacturer per rules above","spec":"simplified spec or null","netweight":number_or_null,"weightunit":"KG or LBS","order":"GOPO-XXXXX or null","lot":"LOT or BATCH value or null","note":null}';
 
-  let res;
-  try {
-    res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
-        messages: [{
-          role: 'user',
-          content: [
+  // 모델 우선순위 목록 - 404시 자동으로 다음 모델 시도
+  const MODELS = [
+    'google/gemini-2.5-flash-preview',
+    'google/gemini-2.5-flash-preview-05-20',
+    'meta-llama/llama-4-maverick',
+    'google/gemini-2.0-flash-lite-001'
+  ];
+
+  let lastError = '';
+  for (let mi = 0; mi < MODELS.length; mi++) {
+    const modelName = MODELS[mi];
+    try {
+      const res = await fetch('https://lingering-moon-8748.skydreamj.workers.dev/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [{
+            role: 'user',
+            content: [
               { type: 'image_url', image_url: { url: 'data:'+mime+';base64,'+b64 } },
-            { type: 'text', text: prompt }
-          ]
-        }],
-        max_tokens: 1200,
-        temperature: 0.1
-      })
-    });
-  } catch(ne) {
-    throw new Error('네트워크 오류: 인터넷 연결을 확인해 주세요. (' + ne.message + ')');
+              { type: 'text', text: prompt }
+            ]
+          }],
+          max_tokens: 1200,
+          temperature: 0.1
+        })
+      });
+
+      if(!res.ok) {
+        const j = await res.json().catch(()=>({}));
+        const em = j.error?.message || String(res.status);
+        if(res.status === 404 || em.includes('No endpoints') || em.includes('not found') || em.includes('invalid')) {
+          lastError = modelName + ' 사용불가';
+          console.warn('Model unavailable:', modelName, '→ 다음 모델 시도');
+          continue;
+        }
+        throw new Error('API 오류 (' + res.status + '): ' + em);
+      }
+
+      const data = await res.json();
+      if(data.error) {
+        lastError = data.error.message;
+        console.warn('Model error:', modelName, data.error.message);
+        continue;
+      }
+      const raw = (data.choices?.[0]?.message?.content) || '';
+      if(!raw) { lastError = '빈 응답'; continue; }
+      console.log('성공 모델:', modelName);
+      return extractJSON(raw);
+
+    } catch(ne) {
+      if(ne.message && (ne.message.includes('API 오류') || ne.message.includes('JSON'))) throw ne;
+      lastError = ne.message;
+      continue;
+    }
   }
-
-  if(!res.ok) {
-    let em = '';
-    try { const j = await res.json(); em = j.error?.message || JSON.stringify(j); } catch(e) {}
-    throw new Error('API 오류 ('+res.status+'): '+em);
-  }
-
-  const data = await res.json();
-  if(data.error) throw new Error('오류: ' + data.error.message);
-
-  const raw = data.choices?.[0]?.message?.content || '';
-  if(!raw) throw new Error('AI 응답이 비어 있어요.');
-  return extractJSON(raw);
+  throw new Error('모든 모델 시도 실패. 마지막 오류: ' + lastError);
 }
 
 
