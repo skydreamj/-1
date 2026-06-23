@@ -1053,7 +1053,6 @@ function openEdit(id) {
   eu.value = units2.find(u => (r.unit||'').toUpperCase().includes(u)) || 'PIECES';
   document.getElementById('e-spec').value = r.spec||'';
   document.getElementById('e-qty').value = r.qty;
-  document.getElementById('e-unit').value = r.unit||'개';
   document.getElementById('e-type').value = r.type;
   document.getElementById('e-note').value = r.note||'';
   const hl = document.getElementById('hist-list');
