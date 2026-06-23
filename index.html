@@ -1038,7 +1038,8 @@ function renderLog() {
 
 // ── EDIT MODAL ──
 function openEdit(id) {
-  const r = records.find(x=>x.id===id); if(!r) return;
+  console.log("[openEdit] id:", id, "records:", records.map(x=>x.id));
+  const r = records.find(x=>String(x.id)===String(id)); if(!r){ console.error("NOT FOUND:", id); return; }
   editId = id;
   document.getElementById('e-name').value = r.name;
   document.getElementById('e-date').value = r.date;
