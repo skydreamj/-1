@@ -437,6 +437,7 @@ async function syncFromSheets() {
     if(data.ok && data.records && data.records.length) {
       records = data.records.map(function(r) {
         return {
+          uid: r.uid || ('U'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)),
           id: r.id||'',
           seq: r.seq||0,
           date: (function(d) {
@@ -508,6 +509,11 @@ function nextSeq() {
 
 function nextId(seq) {
   return 'REC-' + String(seq).padStart(3,'0');
+}
+
+// 절대 중복되지 않는 내부 고유키 (타임스탬프 + 랜덤)
+function makeUid() {
+  return 'U' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 }
 
 function today() { return new Date().toISOString().slice(0,10); }
@@ -620,7 +626,7 @@ function addManual() {
   if(!name||!qty||qty<1){toast('품목명과 수량을 입력해 주세요');return;}
   const seq = nextSeq();
   records.unshift({
-    id: nextId(seq), seq,
+    uid: makeUid(), id: nextId(seq), seq,
     date, type: mType,
     name,
     partner: document.getElementById('m-partner').value.trim(),
@@ -910,7 +916,7 @@ function regScan(forceType) {
   const type = forceType || document.getElementById('s-type').value;
   const seq = nextSeq();
   records.unshift({
-    id: nextId(seq), seq,
+    uid: makeUid(), id: nextId(seq), seq,
     date: document.getElementById('s-date').value||today(),
     type,
     name,
@@ -955,14 +961,14 @@ function checkDuplicateLot(lot, excludeId, newType) {
   });
 }
 
-function deleteRecord(id) {
-  const r = records.find(x=>x.id===id);
+function deleteRecord(key) {
+  const r = records.find(x=>String(x.uid)===String(key)) || records.find(x=>String(x.id)===String(key));
   if(!r) return;
   if(!confirm('"'+r.name+'" ('+r.id+') 를 삭제할까요?\n이 작업은 되돌릴 수 없어요.')) return;
-  records = records.filter(x=>x.id!==id);
+  records = records.filter(x=> r.uid ? String(x.uid)!==String(r.uid) : String(x.id)!==String(r.id));
   save();
   updateKPIs();
-  pushToSheets('delete', {id: r.id});
+  pushToSheets('delete', {id: r.id, uid: r.uid});
   renderLog();
   toast(r.id+' 삭제 완료');
 }
@@ -996,6 +1002,7 @@ function renderLog() {
     var qty = (Number(r.qty)||0).toLocaleString();
     var unit = r.unit||'';
     var rid = r.id||'';
+    var ruid = r.uid||r.id||'';
     var date = r.date||'';
     var lot = r.lot||'';
     var order = r.order||'';
@@ -1029,18 +1036,18 @@ function renderLog() {
         +'</div>'
       +'</div>'
       +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
-        +'<button class="edit-btn" onclick="openEdit(\''+rid+'\')">수정</button>'
-        +'<button class="del-btn" onclick="deleteRecord(\''+rid+'\')">삭제</button>'
+        +'<button class="edit-btn" onclick="openEdit(\''+ruid+'\')">수정</button>'
+        +'<button class="del-btn" onclick="deleteRecord(\''+ruid+'\')">삭제</button>'
       +'</div>'
     +'</div>';
   }).join('');
 }
 
 // ── EDIT MODAL ──
-function openEdit(id) {
-  console.log("[openEdit] id:", id, "records:", records.map(x=>x.id));
-  const r = records.find(x=>String(x.id)===String(id)); if(!r){ console.error("NOT FOUND:", id); return; }
-  editId = id;
+function openEdit(key) {
+  const r = records.find(x=>String(x.uid)===String(key)) || records.find(x=>String(x.id)===String(key));
+  if(!r){ toast('레코드를 찾을 수 없습니다'); return; }
+  editId = r.uid || r.id;
   document.getElementById('e-name').value = r.name;
   document.getElementById('e-date').value = r.date;
   document.getElementById('e-partner').value = r.partner||'';
@@ -1087,7 +1094,8 @@ function closeDrawer() {
 
 function saveEdit() {
   if(!editId) return;
-  const r = records.find(x=>x.id===editId); if(!r) return;
+  const r = records.find(x=>String(x.uid)===String(editId)) || records.find(x=>String(x.id)===String(editId));
+  if(!r) return;
   const nv = {
     name: document.getElementById('e-name').value.trim(),
     date: document.getElementById('e-date').value,
