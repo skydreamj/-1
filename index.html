@@ -1029,8 +1029,8 @@ function renderLog() {
         +'</div>'
       +'</div>'
       +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'
-        +'<button class="edit-btn" data-id="'+rid+'" onclick="openEdit(this.dataset.id)">수정</button>'
-        +'<button class="del-btn" data-id="'+rid+'" onclick="deleteRecord(this.dataset.id)">삭제</button>'
+        +'<button class="edit-btn" onclick="openEdit(\''+rid+'\')">수정</button>'
+        +'<button class="del-btn" onclick="deleteRecord(\''+rid+'\')">삭제</button>'
       +'</div>'
     +'</div>';
   }).join('');
