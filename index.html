@@ -749,6 +749,7 @@ async function callAI(b64, mime) {
   + '   - ELVALHALCOR tags: LOT or BATCH is clearly labeled field. Read COMPLETE value including trailing letters.\n'
   + '     CRITICAL: BATCH NR always ends with a letter (e.g. 0611-16-A, 1301-59-A, 1201-30-B). The FINAL LETTER is mandatory.\n'
   + '     Do not stop reading at last hyphen. Always include the letter after last hyphen.\n'
+  + '     EXCLUDE country code: "KR" near the Batch (usually at right side, separate from batch value) is a COUNTRY CODE, NOT part of batch. Never append KR. Example: Batch "1601-54-A" with "KR" beside it -> use ONLY "1601-54-A", never "1601-54-A-KR".\n'
   + '   - If no clearly labeled LOT NR or BATCH NR found → set null. Do not guess.\n'
   + '     Dimension string pattern: thickness+tol/-tol * width,decimal+tol/-tol * length+tol/-tol\n'
   + '     Common sizes for reference (use these if dimension string is unclear):\n'
@@ -860,6 +861,14 @@ function showRes(info) {
     str = str.replace(/R(\d+),(\d+)/gi, function(m, a, b) { return 'R'+a+'.'+b; });
     return str;
   }
+  // 국가코드 KR 제거: BATCH 끝에 붙은 KR은 국가코드이므로 제외
+  // 예: "1601-54-A-KR" → "1601-54-A", "1601-54-AKR" → "1601-54-A"
+  function stripCountryCode(str) {
+    if(!str) return str;
+    str = str.toString().trim();
+    str = str.replace(/[-\s]*KR$/i, '');   // 끝의 -KR, KR, 공백KR 제거
+    return str.trim();
+  }
   var nm = normalizeR(info.name||'');
   nm = nm.replace(/(\s+R\d+\.\d+)x\d+/i, function(m, r) { return r; });
   setVal('s-name', nm);
@@ -871,7 +880,7 @@ function showRes(info) {
     rawOrder = rawOrder.replace(/^GOPO[-\s]*/i, 'GOPO ').replace(/\s+/, ' ').trim();
   }
   setVal('s-order', rawOrder);
-  setVal('s-lot', normalizeR(info.lot || (!info.lot && info.batch ? info.batch : '')));
+  setVal('s-lot', stripCountryCode(normalizeR(info.lot || (!info.lot && info.batch ? info.batch : ''))));
   setVal('s-partner', info.partner||'');
   setVal('s-spec', info.spec||'');
   setVal('s-qty', info.qty||1);
