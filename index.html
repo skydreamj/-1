@@ -1078,7 +1078,8 @@ function bulkOutConfirm() {
           + '합계: '+(Math.round(sumNw*100)/100).toLocaleString()+' '+(targets[0].weightunit||'KG');
   if(!confirm(msg)) return;
 
-  // 출고 레코드 생성
+  // 1) 먼저 로컬에 모든 출고 레코드 생성 (즉시 화면 반영)
+  var newRecs = [];
   targets.forEach(function(src){
     var seq = nextSeq();
     var rec = {
@@ -1100,7 +1101,7 @@ function bulkOutConfirm() {
       history: []
     };
     records.unshift(rec);
-    pushToSheets('add', rec);
+    newRecs.push(rec);
   });
 
   save();
@@ -1108,7 +1109,32 @@ function bulkOutConfirm() {
   renderLog();
   renderStock();
   updateRemainBar();
-  toast('✓ '+targets.length+'건 출고 완료 ('+outDate+')','g');
+
+  // 2) 시트에는 하나씩 순차 전송 (밀림/누락 방지)
+  pushBulkSequential(newRecs, outDate);
+}
+
+// 여러 출고 레코드를 시트에 순차적으로 안전하게 전송
+async function pushBulkSequential(recs, outDate) {
+  var total = recs.length;
+  var okCount = 0, failCount = 0;
+  for (var i = 0; i < recs.length; i++) {
+    toast('시트 반영 중... ' + (i+1) + '/' + total);
+    try {
+      await pushToSheets('add', recs[i]);
+      okCount++;
+    } catch(e) {
+      failCount++;
+      console.warn('출고 전송 실패:', recs[i].id, e);
+    }
+    // 시트 부하 방지용 약간의 간격
+    await new Promise(function(res){ setTimeout(res, 150); });
+  }
+  if (failCount === 0) {
+    toast('✓ ' + okCount + '건 출고 완료 (' + outDate + ')', 'g');
+  } else {
+    toast('출고 ' + okCount + '건 성공, ' + failCount + '건 실패 · 🔄 동기화 권장');
+  }
 }
 
 function renderLog() {
