@@ -155,6 +155,20 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .stock-fill{height:100%;border-radius:99px;background:var(--grn);transition:width 0.4s;}
 .stock-fill.low{background:var(--red);}
 .stock-sub{font-size:10px;color:var(--t3);margin-top:5px;font-family:var(--mono);}
+.stock-arrow{display:inline-block;color:var(--grn);font-size:11px;transition:transform 0.15s;margin-right:2px;}
+.stock-detail{margin-top:10px;padding-top:10px;border-top:0.5px dashed var(--b2);}
+.stock-detail-hdr{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;color:var(--t3);text-transform:uppercase;margin-bottom:8px;}
+.stock-detail-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--b1);}
+.stock-detail-item:last-child{border-bottom:none;}
+.sd-left{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;}
+.sd-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.sd-dot.in{background:var(--grn);}
+.sd-dot.out{background:var(--red);}
+.sd-line1{font-size:12px;color:var(--t1);}
+.sd-line2{font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:2px;word-break:break-all;}
+.sd-val{font-family:var(--mono);font-size:13px;font-weight:600;flex-shrink:0;}
+.sd-val.in{color:var(--grn);}
+.sd-val.out{color:var(--red);}
 
 /* EXPORT */
 .exp-card{background:var(--s1);border:0.5px solid var(--b2);border-radius:var(--r);padding:16px;margin-bottom:10px;}
@@ -1154,14 +1168,15 @@ function renderStock() {
   var el = document.getElementById('stock-list');
   if(!el) return;
   if(!items.length){el.innerHTML='<div class="empty">재고 없음</div>';return;}
-  el.innerHTML = items.map(function(k) {
+  el.innerHTML = items.map(function(k, idx) {
     var pct = tinw[k]>0 ? Math.round(snw[k]/tinw[k]*100) : (tin[k]>0 ? Math.round(stock[k]/tin[k]*100) : 0);
     var low = pct<30;
     var nwStr = snw[k]>0 ? Math.round(snw[k]*100)/100+' '+wunits[k] : '-';
     var qtyStr = stock[k]>0 ? stock[k].toLocaleString()+' '+units[k] : '0 '+units[k];
-    return '<div class="stock-item">'
+    var safeKey = k.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+    return '<div class="stock-item" onclick="toggleStockDetail(this)" data-name="'+encodeURIComponent(k)+'" style="cursor:pointer;">'
       +'<div class="stock-row">'
-        +'<div class="stock-name">'+k+'</div>'
+        +'<div class="stock-name"><span class="stock-arrow">▸</span> '+k+'</div>'
         +'<div class="stock-qty'+(low?' low':'')+'">'+nwStr+'</div>'
       +'</div>'
       +'<div class="stock-row" style="margin-top:4px;">'
@@ -1171,8 +1186,54 @@ function renderStock() {
       +'<div class="stock-sub">누적입고 '+(Math.round(tinw[k]*100)/100)+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
       +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">입고 '+inSets[k]+' set'+(outSets[k]>0?' · 출고 '+outSets[k]+' set':'')+' · <span style="color:var(--grn);">잔여 '+(inSets[k]-outSets[k])+' set</span></div>'
       +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
+      +'<div class="stock-detail" style="display:none;"></div>'
     +'</div>';
   }).join('');
+}
+
+// 품목 클릭 시 개별 내역 펼치기/접기
+function toggleStockDetail(el) {
+  var box = el.querySelector('.stock-detail');
+  var arrow = el.querySelector('.stock-arrow');
+  if(!box) return;
+  if(box.style.display !== 'none') {
+    box.style.display = 'none';
+    if(arrow) arrow.textContent = '▸';
+    return;
+  }
+  var name = decodeURIComponent(el.getAttribute('data-name'));
+  // 해당 품목의 모든 입출고 내역 (최신순)
+  var list = records.filter(function(r){ return (r.name||'(이름없음)') === name; })
+                    .sort(function(a,b){ return (b.seq||0)-(a.seq||0); });
+  if(!list.length) {
+    box.innerHTML = '<div style="padding:10px;color:var(--t3);font-size:11px;">내역 없음</div>';
+  } else {
+    box.innerHTML = '<div class="stock-detail-hdr">개별 입출고 내역 ('+list.length+'건)</div>'
+      + list.map(function(r){
+          var tp = r.type||'in';
+          var isIn = tp==='in';
+          var nw = r.netweight||'';
+          var wu = r.weightunit||'KG';
+          var qty = (Number(r.qty)||0).toLocaleString();
+          var unit = r.unit||'';
+          var lot = r.lot||r.batch||'';
+          var order = r.order||'';
+          var date = r.date||'';
+          var val = nw ? nw+' '+wu : qty+unit;
+          return '<div class="stock-detail-item">'
+            +'<div class="sd-left">'
+              +'<span class="sd-dot '+tp+'"></span>'
+              +'<div>'
+                +'<div class="sd-line1">'+(isIn?'입고':'출고')+' · '+date+'</div>'
+                +'<div class="sd-line2">'+(lot?'LOT/BATCH: '+lot:'')+(order?' · '+order:'')+'</div>'
+              +'</div>'
+            +'</div>'
+            +'<div class="sd-val '+tp+'">'+(isIn?'+':'-')+val+'</div>'
+          +'</div>';
+        }).join('');
+  }
+  box.style.display = 'block';
+  if(arrow) arrow.textContent = '▾';
 }
 
 // ── EXPORT ──
