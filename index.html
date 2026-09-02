@@ -1154,44 +1154,88 @@ function saveEdit() {
 }
 
 // ── STOCK ──
-function renderStock() {
-  var stock={}, tin={}, snw={}, tinw={}, wunits={}, units={}, partners={}, inSets={}, outSets={};
+// LOT/BATCH 기준 잔여 재고 계산 (입고 - 출고), 품목별로 그룹핑
+// 반환: { 품목명: { partner, wunit, unit, lots: [ {lot, remNw, remQty, inNw, outNw, inQty, outQty} ], sumNw, sumQty, inNwTotal } }
+function computeLotStock() {
+  var lotMap = {};   // key = 품목명||lot
   records.forEach(function(r) {
-    var nm = r.name||'(이름없음)';
-    if(!stock[nm]){stock[nm]=0;tin[nm]=0;snw[nm]=0;tinw[nm]=0;units[nm]=r.unit||'PIECES';wunits[nm]=r.weightunit||'KG';partners[nm]=r.partner||'';inSets[nm]=0;outSets[nm]=0;}
-    var q = Number(r.qty)||0;
-    var nw = parseFloat(r.netweight)||0;
-    if(r.type==='in'){stock[nm]+=q;tin[nm]+=q;snw[nm]+=nw;tinw[nm]+=nw;inSets[nm]++;}
-    else{stock[nm]-=q;snw[nm]-=nw;outSets[nm]++;}
+    var nm = r.name || '(이름없음)';
+    var lot = (r.lot || r.batch || '').trim() || '(LOT없음)';
+    var key = nm + '||' + lot;
+    if (!lotMap[key]) {
+      lotMap[key] = {
+        name: nm, lot: lot,
+        partner: r.partner || '',
+        wunit: r.weightunit || 'KG',
+        unit: r.unit || 'PIECES',
+        inNw: 0, outNw: 0, inQty: 0, outQty: 0
+      };
+    }
+    var nw = parseFloat(r.netweight) || 0;
+    var q  = Number(r.qty) || 0;
+    if (r.type === 'in') { lotMap[key].inNw += nw; lotMap[key].inQty += q; }
+    else                 { lotMap[key].outNw += nw; lotMap[key].outQty += q; }
   });
-  var items = Object.keys(stock).sort(function(a,b){return snw[b]-snw[a];});
+
+  // 품목별로 묶기
+  var byItem = {};
+  Object.keys(lotMap).forEach(function(key) {
+    var L = lotMap[key];
+    var remNw  = Math.round((L.inNw - L.outNw) * 100) / 100;
+    var remQty = L.inQty - L.outQty;
+    if (!byItem[L.name]) {
+      byItem[L.name] = { name: L.name, partner: L.partner, wunit: L.wunit, unit: L.unit, lots: [], sumNw: 0, sumQty: 0, inNwTotal: 0 };
+    }
+    byItem[L.name].inNwTotal += L.inNw;   // 누적입고(전체, 출고와 무관)
+    // 잔여가 남은 LOT만 포함
+    if (remNw > 0.001 || remQty > 0) {
+      byItem[L.name].lots.push({
+        lot: L.lot, remNw: remNw, remQty: remQty,
+        inNw: L.inNw, outNw: L.outNw, inQty: L.inQty, outQty: L.outQty,
+        wunit: L.wunit, unit: L.unit, partner: L.partner
+      });
+      byItem[L.name].sumNw  += remNw;
+      byItem[L.name].sumQty += remQty;
+    }
+  });
+  return byItem;
+}
+
+function renderStock() {
+  var byItem = computeLotStock();
+  // 남은 LOT이 하나라도 있는 품목만
+  var items = Object.keys(byItem).filter(function(nm){ return byItem[nm].lots.length > 0; })
+                    .sort(function(a,b){ return byItem[b].sumNw - byItem[a].sumNw; });
   var el = document.getElementById('stock-list');
   if(!el) return;
-  if(!items.length){el.innerHTML='<div class="empty">재고 없음</div>';return;}
-  el.innerHTML = items.map(function(k, idx) {
-    var pct = tinw[k]>0 ? Math.round(snw[k]/tinw[k]*100) : (tin[k]>0 ? Math.round(stock[k]/tin[k]*100) : 0);
+  if(!items.length){el.innerHTML='<div class="empty">남은 재고 없음</div>';return;}
+  el.innerHTML = items.map(function(k) {
+    var it = byItem[k];
+    var sumNw = Math.round(it.sumNw*100)/100;
+    var inTot = Math.round(it.inNwTotal*100)/100;
+    var pct = inTot>0 ? Math.round(sumNw/inTot*100) : 0;
     var low = pct<30;
-    var nwStr = snw[k]>0 ? Math.round(snw[k]*100)/100+' '+wunits[k] : '-';
-    var qtyStr = stock[k]>0 ? stock[k].toLocaleString()+' '+units[k] : '0 '+units[k];
-    var safeKey = k.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+    var nwStr = sumNw>0 ? sumNw.toLocaleString()+' '+it.wunit : '-';
+    var qtyStr = it.sumQty>0 ? it.sumQty.toLocaleString()+' '+it.unit : '0 '+it.unit;
+    var lotCount = it.lots.length;
     return '<div class="stock-item" onclick="toggleStockDetail(this)" data-name="'+encodeURIComponent(k)+'" style="cursor:pointer;">'
       +'<div class="stock-row">'
         +'<div class="stock-name"><span class="stock-arrow">▸</span> '+k+'</div>'
         +'<div class="stock-qty'+(low?' low':'')+'">'+nwStr+'</div>'
       +'</div>'
       +'<div class="stock-row" style="margin-top:4px;">'
-        +'<div style="font-size:11px;color:var(--t2);">수량</div>'
+        +'<div style="font-size:11px;color:var(--t2);">잔여 수량</div>'
         +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
       +'</div>'
-      +'<div class="stock-sub">누적입고 '+(Math.round(tinw[k]*100)/100)+' '+wunits[k]+' · 잔여 '+pct+'%'+(low?' · ⚠ 부족':'')+(partners[k]?' · '+partners[k]:'')+' </div>'
-      +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">입고 '+inSets[k]+' set'+(outSets[k]>0?' · 출고 '+outSets[k]+' set':'')+' · <span style="color:var(--grn);">잔여 '+(inSets[k]-outSets[k])+' set</span></div>'
+      +'<div class="stock-sub">누적입고 '+inTot.toLocaleString()+' '+it.wunit+' · 잔여율 '+pct+'%'+(low?' · ⚠ 부족':'')+(it.partner?' · '+it.partner:'')+'</div>'
+      +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">남은 LOT/BATCH <span style="color:var(--grn);">'+lotCount+'건</span></div>'
       +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
       +'<div class="stock-detail" style="display:none;"></div>'
     +'</div>';
   }).join('');
 }
 
-// 품목 클릭 시 개별 내역 펼치기/접기
+// 품목 클릭 시 LOT/BATCH별 잔여 펼치기/접기
 function toggleStockDetail(el) {
   var box = el.querySelector('.stock-detail');
   var arrow = el.querySelector('.stock-arrow');
@@ -1202,33 +1246,27 @@ function toggleStockDetail(el) {
     return;
   }
   var name = decodeURIComponent(el.getAttribute('data-name'));
-  // 해당 품목의 모든 입출고 내역 (최신순)
-  var list = records.filter(function(r){ return (r.name||'(이름없음)') === name; })
-                    .sort(function(a,b){ return (b.seq||0)-(a.seq||0); });
-  if(!list.length) {
-    box.innerHTML = '<div style="padding:10px;color:var(--t3);font-size:11px;">내역 없음</div>';
+  var byItem = computeLotStock();
+  var it = byItem[name];
+  var lots = (it && it.lots) ? it.lots.slice() : [];
+  // 잔여 중량 많은 순
+  lots.sort(function(a,b){ return b.remNw - a.remNw; });
+  if(!lots.length) {
+    box.innerHTML = '<div style="padding:10px;color:var(--t3);font-size:11px;">남은 LOT/BATCH 없음</div>';
   } else {
-    box.innerHTML = '<div class="stock-detail-hdr">개별 입출고 내역 ('+list.length+'건)</div>'
-      + list.map(function(r){
-          var tp = r.type||'in';
-          var isIn = tp==='in';
-          var nw = r.netweight||'';
-          var wu = r.weightunit||'KG';
-          var qty = (Number(r.qty)||0).toLocaleString();
-          var unit = r.unit||'';
-          var lot = r.lot||r.batch||'';
-          var order = r.order||'';
-          var date = r.date||'';
-          var val = nw ? nw+' '+wu : qty+unit;
+    box.innerHTML = '<div class="stock-detail-hdr">남은 LOT/BATCH별 잔여 ('+lots.length+'건)</div>'
+      + lots.map(function(L){
+          var remNwStr = L.remNw.toLocaleString()+' '+L.wunit;
+          var outInfo = L.outNw>0 ? ('입고 '+Math.round(L.inNw*100)/100+' − 출고 '+Math.round(L.outNw*100)/100) : ('입고 '+Math.round(L.inNw*100)/100+' (출고 없음)');
           return '<div class="stock-detail-item">'
             +'<div class="sd-left">'
-              +'<span class="sd-dot '+tp+'"></span>'
+              +'<span class="sd-dot in"></span>'
               +'<div>'
-                +'<div class="sd-line1">'+(isIn?'입고':'출고')+' · '+date+'</div>'
-                +'<div class="sd-line2">'+(lot?'LOT/BATCH: '+lot:'')+(order?' · '+order:'')+'</div>'
+                +'<div class="sd-line1">'+L.lot+'</div>'
+                +'<div class="sd-line2">'+outInfo+' '+L.wunit+(L.partner?' · '+L.partner:'')+'</div>'
               +'</div>'
             +'</div>'
-            +'<div class="sd-val '+tp+'">'+(isIn?'+':'-')+val+'</div>'
+            +'<div class="sd-val in">'+remNwStr+'</div>'
           +'</div>';
         }).join('');
   }
