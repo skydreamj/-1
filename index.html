@@ -356,6 +356,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
         <button class="fb" onclick="setF('out',this)">출고</button>
         <button class="fb" onclick="setF('scan',this)">스캔</button>
         <button class="fb" onclick="setF('mod',this)">수정됨</button>
+        <button class="fb" onclick="setF('remain',this)">잔여재고</button>
       </div>
       <div id="log-list"></div>
     </div>
@@ -1009,12 +1010,31 @@ function renderLog() {
   if(!logEl) return;
   if(!records || !records.length) { logEl.innerHTML='<div class="empty">내역이 없습니다</div>'; return; }
   const q = (document.getElementById('srch')||{}).value||'';
+
+  // '잔여재고' 필터용: 잔여 중량이 남은 LOT(품목||LOT) 집합 계산
+  var remainSet = null;
+  if(fType==='remain') {
+    var byItem = computeLotStock();
+    remainSet = {};
+    Object.keys(byItem).forEach(function(nm){
+      byItem[nm].lots.forEach(function(L){
+        remainSet[nm + '||' + (L.lot||'(LOT없음)')] = true;
+      });
+    });
+  }
+
   let list = records.filter(r=>{
     if(q && !r.name.includes(q) && !(r.partner||'').includes(q)) return false;
     if(fType==='in') return r.type==='in';
     if(fType==='out') return r.type==='out';
     if(fType==='scan') return r.source==='scan';
     if(fType==='mod') return r.history&&r.history.length>0;
+    if(fType==='remain') {
+      // 입고 건이면서, 해당 LOT이 아직 잔여가 남아있는 경우만
+      if(r.type!=='in') return false;
+      var key = (r.name||'(이름없음)') + '||' + ((r.lot||r.batch||'').trim()||'(LOT없음)');
+      return !!remainSet[key];
+    }
     return true;
   }).sort((a,b)=>(b.seq||0)-(a.seq||0));
   const el = document.getElementById('log-list');
