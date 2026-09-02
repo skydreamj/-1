@@ -1188,7 +1188,11 @@ function computeLotStock() {
     }
     byItem[L.name].inNwTotal += L.inNw;   // 누적입고(전체, 출고와 무관)
     // 잔여가 남은 LOT만 포함
-    if (remNw > 0.001 || remQty > 0) {
+    // 잔여 판단: 중량(NET) 기준. 중량이 남아있으면 표시.
+    // 단, 입고 중량 자체가 0인 품목(수량만 관리)은 수량 기준으로 판단.
+    var hasWeight = L.inNw > 0.001;
+    var keep = hasWeight ? (remNw > 0.001) : (remQty > 0);
+    if (keep) {
       byItem[L.name].lots.push({
         lot: L.lot, remNw: remNw, remQty: remQty,
         inNw: L.inNw, outNw: L.outNw, inQty: L.inQty, outQty: L.outQty,
