@@ -359,6 +359,17 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
         <button class="fb" onclick="setF('remain',this)">잔여재고</button>
       </div>
       <div id="log-list"></div>
+      <!-- 잔여재고 일괄 출고 바 -->
+      <div id="remain-bar" style="display:none;position:sticky;bottom:0;background:var(--s1);border-top:0.5px solid var(--b2);padding:12px 0 8px;margin-top:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--t2);">선택 <b id="remain-count" style="color:var(--red);">0</b>건 · <span id="remain-sum" style="color:var(--t2);font-family:var(--mono);">0 KG</span></span>
+          <button onclick="toggleAllRemain()" style="margin-left:auto;font-size:11px;padding:5px 10px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;">전체선택</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="date" id="remain-date" style="flex:1;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:9px 10px;font-size:13px;color:var(--t1);outline:none;">
+          <button onclick="bulkOutConfirm()" style="padding:10px 16px;background:var(--red);color:#fff;border:none;border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">선택 출고</button>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ STOCK ═══ -->
@@ -1002,7 +1013,102 @@ function setF(f, el) {
   fType=f;
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
+  // 잔여재고 필터일 때만 일괄출고 바 표시
+  var bar = document.getElementById('remain-bar');
+  if(bar) {
+    if(f==='remain') {
+      bar.style.display='block';
+      var dt = document.getElementById('remain-date');
+      if(dt && !dt.value) dt.value = today();
+    } else {
+      bar.style.display='none';
+    }
+  }
   renderLog();
+  if(f==='remain') updateRemainBar();
+}
+
+// 체크박스 선택 상태 → 상단 카운트/합계 갱신
+function updateRemainBar() {
+  var chks = document.querySelectorAll('.remain-chk:checked');
+  var cnt = chks.length;
+  var sumNw = 0, wu = 'KG';
+  chks.forEach(function(c){
+    var uid = c.getAttribute('data-uid');
+    var r = records.find(function(x){ return String(x.uid)===String(uid) || String(x.id)===String(uid); });
+    if(r){ sumNw += parseFloat(r.netweight)||0; wu = r.weightunit||'KG'; }
+  });
+  var cE = document.getElementById('remain-count');
+  var sE = document.getElementById('remain-sum');
+  if(cE) cE.textContent = cnt;
+  if(sE) sE.textContent = (Math.round(sumNw*100)/100).toLocaleString()+' '+wu;
+}
+
+// 전체 선택 / 해제 토글
+function toggleAllRemain() {
+  var chks = document.querySelectorAll('.remain-chk');
+  var allChecked = chks.length>0 && Array.prototype.every.call(chks, function(c){ return c.checked; });
+  chks.forEach(function(c){ c.checked = !allChecked; });
+  updateRemainBar();
+}
+
+// 선택 출고 - 확인창
+function bulkOutConfirm() {
+  var chks = document.querySelectorAll('.remain-chk:checked');
+  if(!chks.length){ toast('출고할 재고를 선택해 주세요'); return; }
+  var outDate = (document.getElementById('remain-date')||{}).value || today();
+
+  var targets = [];
+  chks.forEach(function(c){
+    var uid = c.getAttribute('data-uid');
+    var r = records.find(function(x){ return String(x.uid)===String(uid) || String(x.id)===String(uid); });
+    if(r) targets.push(r);
+  });
+  if(!targets.length){ toast('선택 항목을 찾을 수 없습니다'); return; }
+
+  // 확인 목록
+  var lines = targets.map(function(r){
+    return '· '+(r.name||'')+' / '+(r.lot||r.batch||'')+' / '+(r.netweight||'')+' '+(r.weightunit||'KG');
+  }).join('\n');
+  var sumNw = targets.reduce(function(s,r){ return s+(parseFloat(r.netweight)||0); },0);
+
+  var msg = '아래 '+targets.length+'건을 '+outDate+' 날짜로 출고 처리할까요?\n'
+          + '(각 LOT의 입고 수량/중량 전부 출고)\n\n'
+          + lines + '\n\n'
+          + '합계: '+(Math.round(sumNw*100)/100).toLocaleString()+' '+(targets[0].weightunit||'KG');
+  if(!confirm(msg)) return;
+
+  // 출고 레코드 생성
+  targets.forEach(function(src){
+    var seq = nextSeq();
+    var rec = {
+      uid: makeUid(), id: nextId(seq), seq: seq,
+      date: outDate, type: 'out',
+      name: src.name||'',
+      partner: src.partner||'',
+      order: src.order||'',
+      lot: src.lot||src.batch||'',
+      batch: src.lot||src.batch||'',
+      spec: src.spec||'',
+      netweight: src.netweight||'',
+      weightunit: src.weightunit||'KG',
+      qty: Number(src.qty)||0,
+      unit: src.unit||'PIECES',
+      source: 'manual',
+      note: '일괄출고',
+      registeredAt: new Date().toLocaleString('ko-KR'),
+      history: []
+    };
+    records.unshift(rec);
+    pushToSheets('add', rec);
+  });
+
+  save();
+  updateKPIs();
+  renderLog();
+  renderStock();
+  updateRemainBar();
+  toast('✓ '+targets.length+'건 출고 완료 ('+outDate+')','g');
 }
 
 function renderLog() {
@@ -1062,7 +1168,11 @@ function renderLog() {
     var partnerStr = partner ? ' · '+partner : '';
     var specStr = spec ? ' '+spec : '';
     var nwStr = nw ? ' · NET '+nw+' '+wu : '';
+    var chk = (fType==='remain')
+      ? '<input type="checkbox" class="remain-chk" data-uid="'+ruid+'" onclick="event.stopPropagation();updateRemainBar()" style="width:18px;height:18px;margin-right:8px;margin-top:2px;flex-shrink:0;accent-color:var(--red);cursor:pointer;">'
+      : '';
     return '<div class="log-item">'
+      +chk
       +'<div class="log-dot '+tp+'"></div>'
       +'<div class="log-body">'
         +'<div class="log-top">'
