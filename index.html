@@ -4,19 +4,26 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="theme-color" content="#0a0a0a"/>
+<meta name="theme-color" content="#03c75a"/>
 <title>재고관리 PRO</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#0a0a0a;--s1:#111;--s2:#181818;--s3:#222;
-  --b1:rgba(255,255,255,0.06);--b2:rgba(255,255,255,0.11);--b3:rgba(255,255,255,0.18);
-  --t1:#f2f2f2;--t2:#888;--t3:#444;
-  --grn:#00e07a;--grn2:rgba(0,224,122,0.1);--grn3:rgba(0,224,122,0.18);
-  --red:#ff4f4f;--red2:rgba(255,79,79,0.1);--red3:rgba(255,79,79,0.18);
-  --blu:#3d9eff;--blu2:rgba(61,158,255,0.1);
-  --yel:#f5c400;--yel2:rgba(245,196,0,0.1);
-  --r:12px;--r2:8px;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans KR',sans-serif;
+  /* 네이버 블로그풍 화이트 테마 */
+  --bg:#f5f6f7;                                   /* 앱 배경(연회색) */
+  --s1:#ffffff;                                    /* 카드/헤더 흰색 */
+  --s2:#f2f4f6;                                    /* 입력필드 배경 */
+  --s3:#e9ecef;
+  --b1:rgba(0,0,0,0.05);--b2:rgba(0,0,0,0.10);--b3:rgba(0,0,0,0.16); /* 테두리(어두운 hairline) */
+  --t1:#1a1c1f;                                    /* 본문 진한 텍스트 */
+  --t2:#6b7280;                                    /* 보조 텍스트 */
+  --t3:#a0a6ad;                                    /* 흐린 텍스트 */
+  --grn:#03c75a;--grn2:rgba(3,199,90,0.10);--grn3:rgba(3,199,90,0.18);  /* 네이버 그린 */
+  --red:#f0454a;--red2:rgba(240,69,74,0.09);--red3:rgba(240,69,74,0.16);
+  --blu:#2f80ed;--blu2:rgba(47,128,237,0.10);
+  --yel:#f5a623;--yel2:rgba(245,166,35,0.12);
+  --shadow:0 1px 3px rgba(0,0,0,0.04),0 1px 2px rgba(0,0,0,0.06);
+  --r:14px;--r2:10px;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans KR',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overflow:hidden;}
@@ -24,57 +31,66 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 
 /* PASSWORD SCREEN */
 .pw-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;}
-.pw-box{background:var(--s1);border:0.5px solid var(--b2);border-radius:var(--r);padding:32px 24px;width:90%;max-width:340px;text-align:center;}
+.pw-box{background:var(--s1);border:1px solid var(--b1);border-radius:20px;padding:36px 26px;width:90%;max-width:340px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.08);}
 .pw-logo{font-family:var(--mono);font-size:18px;font-weight:600;letter-spacing:0.1em;margin-bottom:8px;}
 .pw-logo b{color:var(--grn);}
 .pw-sub{font-size:12px;color:var(--t3);margin-bottom:24px;}
 .pw-input{width:100%;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:12px 14px;font-size:16px;color:var(--t1);text-align:center;letter-spacing:0.15em;outline:none;margin-bottom:10px;font-family:var(--mono);}
-.pw-input:focus{border-color:var(--grn);}
-.pw-btn{width:100%;padding:13px;background:var(--grn);color:#000;border:none;border-radius:var(--r2);font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);margin-bottom:8px;}
+.pw-input:focus{border-color:var(--grn);box-shadow:0 0 0 3px var(--grn2);}
+.pw-btn{width:100%;padding:13px;background:var(--grn);color:#fff;border:none;border-radius:var(--r2);font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);margin-bottom:8px;}
 .pw-btn:active{opacity:0.8;}
 .pw-err{font-size:12px;color:var(--red);min-height:18px;margin-top:4px;}
 .pw-hint{font-size:11px;color:var(--t3);margin-top:12px;}
 /* HEADER */
-.hdr{padding:14px 16px 10px;background:var(--bg);border-bottom:0.5px solid var(--b1);flex-shrink:0;}
+.hdr{padding:16px 16px 12px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;}
 .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .brand{font-family:var(--mono);font-size:13px;letter-spacing:0.1em;color:var(--t2);}
 .brand b{color:var(--grn);}
 .hdr-date{font-family:var(--mono);font-size:11px;color:var(--t3);}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
-.kpi{background:var(--s1);border:0.5px solid var(--b1);border-radius:var(--r2);padding:8px 10px;}
-.kpi-v{font-family:var(--mono);font-size:17px;font-weight:600;line-height:1;}
+.month-sel{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;}
+.month-arrow{width:28px;height:28px;border-radius:8px;border:1px solid var(--b2);background:var(--s1);color:var(--t1);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--mono);}
+.month-arrow:active{background:var(--s2);}
+.month-label{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--t1);letter-spacing:0.02em;min-width:90px;text-align:center;}
+.mat-toggle{display:flex;gap:5px;margin-bottom:10px;}
+.mt{flex:1;padding:7px 4px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid var(--b2);background:var(--s1);color:var(--t2);cursor:pointer;font-family:var(--sans);transition:all 0.12s;}
+.mt.on{background:var(--grn);color:#fff;border-color:var(--grn);}
+.kpi{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r2);padding:10px 12px;box-shadow:var(--shadow);}
+.kpi-v{font-family:var(--mono);font-size:16px;font-weight:600;line-height:1;letter-spacing:-0.02em;}
 .kpi-l{font-size:10px;color:var(--t3);margin-top:4px;}
 .kpi.g .kpi-v{color:var(--grn);}
 .kpi.r .kpi-v{color:var(--red);}
+.kpi.b .kpi-v{color:var(--blu);}
 
 /* NAV */
-.nav{display:flex;background:var(--bg);border-bottom:0.5px solid var(--b1);flex-shrink:0;position:sticky;top:0;z-index:20;}
-.nav-btn{flex:1;padding:11px 2px;font-size:11px;font-weight:500;color:var(--t3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--sans);}
-.nav-btn.on{color:var(--t1);border-bottom-color:var(--grn);}
+.nav{display:flex;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;position:sticky;top:0;z-index:20;padding:0 4px;overflow-x:auto;}
+.nav::-webkit-scrollbar{display:none;}
+.nav-btn{flex:1;min-width:56px;padding:13px 4px;font-size:12px;font-weight:500;color:var(--t2);background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:color 0.15s;}
+.nav-btn.on{color:var(--grn);border-bottom-color:var(--grn);font-weight:700;}
 
 /* SCROLL AREA */
 .main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;}
 
 /* ── COMMON FORM ── */
 .pg{padding:14px 16px;}
-.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--t3);text-transform:uppercase;margin-bottom:10px;}
-.card{background:var(--s1);border:0.5px solid var(--b2);border-radius:var(--r);padding:14px;margin-bottom:12px;}
+.sec-lbl{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px;}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
 .fg{margin-bottom:12px;}
 .fg label{font-size:12px;color:var(--t2);display:block;margin-bottom:5px;}
 .fg input,.fg select,.fg textarea{width:100%;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:12px 14px;font-size:15px;color:var(--t1);font-family:var(--sans);outline:none;}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--grn);}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--grn);box-shadow:0 0 0 3px var(--grn2);}
 .fg select option{background:var(--s2);}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
 .type-toggle{display:flex;gap:6px;}
 .tt-btn{flex:1;padding:10px;border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--b2);background:var(--s2);color:var(--t2);font-family:var(--sans);}
-.tt-btn.in{background:var(--grn2);color:var(--grn);border-color:rgba(0,224,122,0.3);}
-.tt-btn.out{background:var(--red2);color:var(--red);border-color:rgba(255,79,79,0.3);}
-.submit-btn{width:100%;padding:15px;background:var(--grn);color:#000;border:none;border-radius:var(--r2);font-size:16px;font-weight:700;cursor:pointer;font-family:var(--sans);margin-top:8px;letter-spacing:0.02em;}
+.tt-btn.in{background:var(--grn2);color:var(--grn);border-color:var(--grn3);}
+.tt-btn.out{background:var(--red2);color:var(--red);border-color:var(--red3);}
+.submit-btn{width:100%;padding:15px;background:var(--grn);color:#fff;border:none;border-radius:var(--r2);font-size:16px;font-weight:700;cursor:pointer;font-family:var(--sans);margin-top:8px;letter-spacing:0.02em;}
 .submit-btn:active{opacity:0.8;}
 
 /* ── SCAN TAB ── */
-.cam-zone{background:var(--s1);border:1.5px dashed var(--b2);border-radius:var(--r);padding:28px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;position:relative;overflow:hidden;margin-bottom:12px;}
+.cam-zone{background:var(--s1);border:2px dashed var(--b3);border-radius:var(--r);padding:34px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;position:relative;overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);transition:border-color 0.15s;}
 .cam-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0;}
 .cam-ic{width:56px;height:56px;background:var(--s2);border-radius:50%;border:1.5px solid var(--b2);display:flex;align-items:center;justify-content:center;}
 .cam-ic svg{width:24px;height:24px;fill:none;stroke:var(--grn);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
@@ -85,21 +101,21 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 @keyframes sp{to{transform:rotate(360deg);}}
 .ld-t{font-size:13px;color:var(--t2);}
 .ld-s{font-size:11px;color:var(--t3);}
-.res-card{background:var(--s1);border:0.5px solid var(--b2);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.res-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);}
 .res-img{width:100%;max-height:180px;object-fit:cover;display:block;}
 .res-body{padding:14px;}
 .res-lbl{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--t3);text-transform:uppercase;margin-bottom:10px;}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
 .chip{font-size:10px;padding:3px 8px;border-radius:99px;background:var(--s2);color:var(--t2);border:0.5px solid var(--b1);font-family:var(--mono);}
-.chip.g{background:var(--grn2);color:var(--grn);border-color:rgba(0,224,122,0.2);}
+.chip.g{background:var(--grn2);color:var(--grn);border-color:var(--grn2);}
 .chip.b{background:var(--blu2);color:var(--blu);}
 .chip.y{background:var(--yel2);color:var(--yel);}
 .act-row{display:flex;gap:8px;margin-top:10px;}
-.btn-in{flex:1;padding:12px;background:var(--grn2);color:var(--grn);border:1px solid rgba(0,224,122,0.3);border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;}
-.btn-out{flex:1;padding:12px;background:var(--red2);color:var(--red);border:1px solid rgba(255,79,79,0.3);border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;}
+.btn-in{flex:1;padding:12px;background:var(--grn2);color:var(--grn);border:1px solid var(--grn3);border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;}
+.btn-out{flex:1;padding:12px;background:var(--red2);color:var(--red);border:1px solid var(--red3);border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;}
 .btn-ghost{padding:12px 14px;background:var(--s2);color:var(--t2);border:0.5px solid var(--b2);border-radius:var(--r2);font-size:12px;cursor:pointer;}
 .btn-in:active,.btn-out:active,.btn-ghost:active{opacity:0.7;}
-.err-box{background:var(--red2);border:0.5px solid rgba(255,79,79,0.3);border-radius:var(--r2);padding:12px;margin-bottom:12px;}
+.err-box{background:var(--red2);border:0.5px solid var(--red3);border-radius:var(--r2);padding:12px;margin-bottom:12px;}
 .err-box .err-t{color:var(--red);font-size:13px;font-weight:500;margin-bottom:4px;}
 .err-box .err-s{color:var(--t2);font-size:11px;line-height:1.6;}
 
@@ -126,7 +142,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .tag.scan{background:var(--blu2);color:var(--blu);}
 .tag.mod{background:var(--yel2);color:var(--yel);}
 .edit-btn{padding:5px 10px;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);font-size:11px;color:var(--t2);cursor:pointer;flex-shrink:0;margin-top:2px;}
-.del-btn{padding:5px 10px;background:var(--red2);border:0.5px solid rgba(255,79,79,0.3);border-radius:var(--r2);font-size:11px;color:var(--red);cursor:pointer;flex-shrink:0;margin-top:2px;}
+.del-btn{padding:5px 10px;background:var(--red2);border:0.5px solid var(--red3);border-radius:var(--r2);font-size:11px;color:var(--red);cursor:pointer;flex-shrink:0;margin-top:2px;}
 .empty{text-align:center;padding:40px;color:var(--t3);font-size:13px;}
 
 /* EDIT MODAL */
@@ -146,10 +162,21 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .hist-item b{color:var(--yel);font-family:var(--mono);}
 
 /* STOCK TAB */
-.stock-item{padding:14px 0;border-bottom:0.5px solid var(--b1);}
+.mat-group-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin:14px 0 8px;border-bottom:2px solid var(--b2);}
+.mat-group-hdr:first-child{margin-top:0;}
+.mat-group-hdr>span:first-child{font-size:14px;font-weight:700;color:var(--t1);}
+.mat-group-hdr .mat-count{font-size:11px;font-weight:500;color:var(--t2);margin-left:4px;}
+.mat-group-hdr .mat-sum{font-family:var(--mono);font-size:14px;font-weight:700;}
+.mat-group-hdr.mat-brass{border-bottom-color:#c9a227;}
+.mat-group-hdr.mat-brass>span:first-child{color:#a8851d;}
+.mat-group-hdr.mat-brass .mat-sum{color:#a8851d;}
+.mat-group-hdr.mat-aluminum{border-bottom-color:#8a94a6;}
+.mat-group-hdr.mat-aluminum>span:first-child{color:#5f6b7d;}
+.mat-group-hdr.mat-aluminum .mat-sum{color:#5f6b7d;}
+.stock-item{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r2);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);}
 .stock-row{display:flex;align-items:baseline;justify-content:space-between;}
-.stock-name{font-size:13px;font-weight:500;}
-.stock-qty{font-family:var(--mono);font-size:18px;font-weight:600;}
+.stock-name{font-size:14px;font-weight:700;color:var(--t1);}
+.stock-qty{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--grn);}
 .stock-qty.low{color:var(--red);}
 .stock-bar{height:3px;background:var(--s2);border-radius:99px;margin-top:8px;}
 .stock-fill{height:100%;border-radius:99px;background:var(--grn);transition:width 0.4s;}
@@ -171,24 +198,24 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .sd-val.out{color:var(--red);}
 
 /* EXPORT */
-.exp-card{background:var(--s1);border:0.5px solid var(--b2);border-radius:var(--r);padding:16px;margin-bottom:10px;}
+.exp-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:18px;margin-bottom:10px;box-shadow:var(--shadow);}
 .exp-title{font-size:14px;font-weight:600;margin-bottom:4px;}
 .exp-desc{font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.6;}
 .exp-btn{width:100%;padding:13px;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);font-size:13px;font-weight:600;color:var(--t1);cursor:pointer;font-family:var(--sans);}
 .exp-btn:active{opacity:0.8;}
-.exp-btn.primary{background:var(--grn2);color:var(--grn);border-color:rgba(0,224,122,0.3);}
+.exp-btn.primary{background:var(--grn2);color:var(--grn);border-color:var(--grn3);font-weight:700;}
 
 /* TOAST */
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--s1);border:0.5px solid var(--b2);border-radius:99px;padding:9px 18px;font-size:12px;color:var(--t1);opacity:0;transition:all 0.22s;z-index:200;white-space:nowrap;font-family:var(--mono);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-.toast.g{border-color:rgba(0,224,122,0.4);color:var(--grn);}
+.toast.g{border-color:var(--grn3);color:var(--grn);}
 </style>
 </head>
 <body>
 <!-- PASSWORD SCREEN -->
 <div class="pw-screen" id="pw-screen">
   <div class="pw-box">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;letter-spacing:0.12em;color:#f2f2f2;margin-bottom:4px;">GAON<span style="color:#00e07a;">METAL</span></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;letter-spacing:0.12em;color:#1a1c1f;margin-bottom:4px;">GAON<span style="color:#03c75a;">METAL</span></div>
     <div class="pw-sub">재고관리 시스템</div>
     <input class="pw-input" id="pw-input" type="password" placeholder="••••••" maxlength="20"
       onkeydown="if(event.key==='Enter')checkPw()"/>
@@ -201,17 +228,27 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 <div class="app" id="main-app" style="display:none;">
   <div class="hdr">
     <div class="hdr-top">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0.1em;color:#f2f2f2;">GAON<span style="color:#00e07a;">METAL</span> <span style="font-size:11px;color:var(--t2);font-weight:400;letter-spacing:0.05em;">재고관리시스템</span></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:0.1em;color:#1a1c1f;">GAON<span style="color:#03c75a;">METAL</span> <span style="font-size:11px;color:var(--t2);font-weight:400;letter-spacing:0.05em;">재고관리시스템</span></div>
       <div style="display:flex;align-items:center;gap:8px;">
       <div class="hdr-date" id="hdr-date"></div>
       <button onclick="syncFromSheets()" style="font-size:10px;padding:4px 9px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;font-family:var(--mono);">🔄 동기화</button>
     </div>
     </div>
+    <div class="month-sel">
+      <button class="month-arrow" onclick="changeMonth(-1)" aria-label="이전 달">‹</button>
+      <div class="month-label" id="month-label">2026-05</div>
+      <button class="month-arrow" onclick="changeMonth(1)" aria-label="다음 달">›</button>
+    </div>
+    <div class="mat-toggle">
+      <button class="mt on" id="mt-all" onclick="setMat('all')">전체</button>
+      <button class="mt" id="mt-brass" onclick="setMat('brass')">BRASS</button>
+      <button class="mt" id="mt-aluminum" onclick="setMat('aluminum')">ALUMINUM</button>
+    </div>
     <div class="kpis">
-      <div class="kpi g"><div class="kpi-v" id="k-in">0</div><div class="kpi-l">입고</div></div>
-      <div class="kpi r"><div class="kpi-v" id="k-out">0</div><div class="kpi-l">출고</div></div>
-      <div class="kpi"><div class="kpi-v" id="k-items">0</div><div class="kpi-l">품목</div></div>
-      <div class="kpi"><div class="kpi-v" id="k-total">0</div><div class="kpi-l">건수</div></div>
+      <div class="kpi"><div class="kpi-v" id="k-prev">0</div><div class="kpi-l">전월재고</div></div>
+      <div class="kpi g"><div class="kpi-v" id="k-in">0</div><div class="kpi-l">당월입고</div></div>
+      <div class="kpi r"><div class="kpi-v" id="k-out">0</div><div class="kpi-l">당월출고</div></div>
+      <div class="kpi b"><div class="kpi-v" id="k-remain">0</div><div class="kpi-l">잔여재고</div></div>
     </div>
   </div>
 
@@ -399,7 +436,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 
 </div><!-- /main-app -->
 <div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:5px;font-size:10px;color:var(--t3);font-family:'IBM Plex Mono',monospace;letter-spacing:0.1em;background:var(--bg);border-top:0.5px solid var(--b1);z-index:50;">
-  Designed By <b style="color:#00e07a;">SDJ</b>
+  Designed By <b style="color:#03c75a;">SDJ</b>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -414,6 +451,8 @@ let records = [];
 let fType = '';
 let mType = 'in';
 let editId = null;
+let selMonth = null;  // 선택된 기준월 'YYYY-MM' (null이면 현재월)
+let selMat = 'all';   // KPI 재질 필터: all | brass | aluminum
 
 // ── Worker URL (Cloudflare) ──
 const WORKER_URL = 'https://lingering-moon-8748.skydreamj.workers.dev';
@@ -547,14 +586,75 @@ function setHdrDate() {
   document.getElementById('hdr-date').textContent = date+' '+time;
 }
 
+// 재질 판별: 품목명 기준 (brass=황동, aluminum=알루미늄, other=기타)
+function matOf(name) {
+  var n = (name||'').toUpperCase();
+  if(n.indexOf('BRASS')>=0) return 'brass';
+  if(n.indexOf('ALUMINUM')>=0 || n.indexOf('ALUMINIUM')>=0) return 'aluminum';
+  return 'other';
+}
+var MAT_LABEL = { brass:'BRASS', aluminum:'ALUMINUM', other:'ETC' };
+
+// 레코드 날짜에서 'YYYY-MM' 추출
+function recYM(r) {
+  var d = (r.date||'').toString();
+  var m = d.match(/^(\d{4})-(\d{2})/);
+  return m ? (m[1]+'-'+m[2]) : '';
+}
+
+function curYM() {
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+
+function changeMonth(delta) {
+  var base = selMonth || curYM();
+  var parts = base.split('-');
+  var y = parseInt(parts[0]), m = parseInt(parts[1]) - 1; // 0-based
+  var dt = new Date(y, m + delta, 1);
+  selMonth = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  updateKPIs();
+}
+
+function setMat(mat) {
+  selMat = mat;
+  ['all','brass','aluminum'].forEach(function(m){
+    var b = document.getElementById('mt-'+m);
+    if(b) b.className = 'mt' + (m===mat ? ' on' : '');
+  });
+  updateKPIs();
+}
+
 function updateKPIs() {
-  const ti = records.filter(r=>r.type==='in').reduce((s,r)=>s+r.qty,0);
-  const to = records.filter(r=>r.type==='out').reduce((s,r)=>s+r.qty,0);
-  const items = new Set(records.map(r=>r.name)).size;
-  document.getElementById('k-in').textContent = (ti||0).toLocaleString();
-  document.getElementById('k-out').textContent = (to||0).toLocaleString();
-  document.getElementById('k-items').textContent = items;
-  document.getElementById('k-total').textContent = records.length;
+  var ym = selMonth || curYM();
+  var lbl = document.getElementById('month-label');
+  if(lbl) lbl.textContent = ym;
+
+  var prevStock = 0;   // 전월재고: 선택월 이전 누적잔여(입고-출고)
+  var monthIn = 0;     // 당월입고
+  var monthOut = 0;    // 당월출고
+
+  records.forEach(function(r) {
+    if(selMat!=='all' && matOf(r.name)!==selMat) return;  // 재질 필터
+    var rym = recYM(r);
+    if(!rym) return;
+    var nw = parseFloat(r.netweight)||0;
+    if(rym < ym) {
+      if(r.type==='in') prevStock += nw; else prevStock -= nw;
+    } else if(rym === ym) {
+      if(r.type==='in') monthIn += nw; else monthOut += nw;
+    }
+  });
+
+  var remain = prevStock + monthIn - monthOut;
+
+  function fmt(n){ return (Math.round(n*100)/100).toLocaleString(); }
+  var pE=document.getElementById('k-prev'), iE=document.getElementById('k-in'),
+      oE=document.getElementById('k-out'), rE=document.getElementById('k-remain');
+  if(pE) pE.textContent = fmt(prevStock);
+  if(iE) iE.textContent = fmt(monthIn);
+  if(oE) oE.textContent = fmt(monthOut);
+  if(rE) rE.textContent = fmt(remain);
 }
 
 // ── NAV ──
@@ -1405,36 +1505,57 @@ function computeLotStock() {
 
 function renderStock() {
   var byItem = computeLotStock();
-  // 남은 LOT이 하나라도 있는 품목만
   var items = Object.keys(byItem).filter(function(nm){ return byItem[nm].lots.length > 0; })
                     .sort(function(a,b){ return byItem[b].sumNw - byItem[a].sumNw; });
   var el = document.getElementById('stock-list');
   if(!el) return;
   if(!items.length){el.innerHTML='<div class="empty">남은 재고 없음</div>';return;}
-  el.innerHTML = items.map(function(k) {
-    var it = byItem[k];
-    var sumNw = Math.round(it.sumNw*100)/100;
-    var inTot = Math.round(it.inNwTotal*100)/100;
-    var pct = inTot>0 ? Math.round(sumNw/inTot*100) : 0;
-    var low = pct<30;
-    var nwStr = sumNw>0 ? sumNw.toLocaleString()+' '+it.wunit : '-';
-    var qtyStr = it.sumQty>0 ? it.sumQty.toLocaleString()+' '+it.unit : '0 '+it.unit;
-    var lotCount = it.lots.length;
-    return '<div class="stock-item" onclick="toggleStockDetail(this)" data-name="'+encodeURIComponent(k)+'" style="cursor:pointer;">'
-      +'<div class="stock-row">'
-        +'<div class="stock-name"><span class="stock-arrow">▸</span> '+k+'</div>'
-        +'<div class="stock-qty'+(low?' low':'')+'">'+nwStr+'</div>'
-      +'</div>'
-      +'<div class="stock-row" style="margin-top:4px;">'
-        +'<div style="font-size:11px;color:var(--t2);">잔여 수량</div>'
-        +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
-      +'</div>'
-      +'<div class="stock-sub">누적입고 '+inTot.toLocaleString()+' '+it.wunit+' · 잔여율 '+pct+'%'+(low?' · ⚠ 부족':'')+(it.partner?' · '+it.partner:'')+'</div>'
-      +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">남은 LOT/BATCH <span style="color:var(--grn);">'+lotCount+'건</span></div>'
-      +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
-      +'<div class="stock-detail" style="display:none;"></div>'
-    +'</div>';
-  }).join('');
+
+  // 재질별 그룹핑
+  var groups = { brass:[], aluminum:[], other:[] };
+  items.forEach(function(nm){ groups[matOf(nm)].push(nm); });
+
+  var html = '';
+  ['brass','aluminum','other'].forEach(function(mat){
+    var list = groups[mat];
+    if(!list.length) return;
+    // 그룹 잔여 합계
+    var grpSum = list.reduce(function(s,nm){ return s + byItem[nm].sumNw; }, 0);
+    var grpUnit = byItem[list[0]].wunit || 'KG';
+    html += '<div class="mat-group-hdr mat-'+mat+'">'
+          + '<span>'+MAT_LABEL[mat]+' <span class="mat-count">'+list.length+'품목</span></span>'
+          + '<span class="mat-sum">'+(Math.round(grpSum*100)/100).toLocaleString()+' '+grpUnit+'</span>'
+          + '</div>';
+    html += list.map(stockCardHtml).join('');
+  });
+  el.innerHTML = html;
+}
+
+// 재고 카드 1개 HTML 생성
+function stockCardHtml(k) {
+  var byItem = computeLotStock();
+  var it = byItem[k];
+  var sumNw = Math.round(it.sumNw*100)/100;
+  var inTot = Math.round(it.inNwTotal*100)/100;
+  var pct = inTot>0 ? Math.round(sumNw/inTot*100) : 0;
+  var low = pct<30;
+  var nwStr = sumNw>0 ? sumNw.toLocaleString()+' '+it.wunit : '-';
+  var qtyStr = it.sumQty>0 ? it.sumQty.toLocaleString()+' '+it.unit : '0 '+it.unit;
+  var lotCount = it.lots.length;
+  return '<div class="stock-item" onclick="toggleStockDetail(this)" data-name="'+encodeURIComponent(k)+'" style="cursor:pointer;">'
+    +'<div class="stock-row">'
+      +'<div class="stock-name"><span class="stock-arrow">▸</span> '+k+'</div>'
+      +'<div class="stock-qty'+(low?' low':'')+'">'+nwStr+'</div>'
+    +'</div>'
+    +'<div class="stock-row" style="margin-top:4px;">'
+      +'<div style="font-size:11px;color:var(--t2);">잔여 수량</div>'
+      +'<div style="font-family:var(--mono);font-size:13px;color:var(--t2);">'+qtyStr+'</div>'
+    +'</div>'
+    +'<div class="stock-sub">누적입고 '+inTot.toLocaleString()+' '+it.wunit+' · 잔여율 '+pct+'%'+(low?' · ⚠ 부족':'')+(it.partner?' · '+it.partner:'')+'</div>'
+    +'<div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono);">남은 LOT/BATCH <span style="color:var(--grn);">'+lotCount+'건</span></div>'
+    +'<div class="stock-bar"><div class="stock-fill'+(low?' low':'')+'" style="width:'+Math.max(pct,2)+'%"></div></div>'
+    +'<div class="stock-detail" style="display:none;"></div>'
+  +'</div>';
 }
 
 // 품목 클릭 시 LOT/BATCH별 잔여 펼치기/접기
