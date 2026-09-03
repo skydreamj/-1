@@ -217,9 +217,10 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 
   <div class="nav">
     <button class="nav-btn on" onclick="nav('scan',this)">📷 스캔</button>
-    <button class="nav-btn" onclick="nav('manual',this)">✏️ 입력</button>
+    <button class="nav-btn" onclick="nav('manual',this)">📥 입고</button>
+    <button class="nav-btn" onclick="nav('shipout',this)">📤 출고</button>
     <button class="nav-btn" onclick="nav('log',this)">📋 내역</button>
-    <button class="nav-btn" onclick="nav('stock',this)">📦 재고</button>
+    <button class="nav-btn" onclick="nav('stock',this)">📦 품목별재고</button>
     <button class="nav-btn" onclick="nav('export',this)">⬇️ 내보내기</button>
   </div>
 
@@ -297,20 +298,8 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 
     <!-- ═══ MANUAL ═══ -->
     <div id="pg-manual" class="pg" style="display:none">
-      <div class="sec-lbl">직접 입력</div>
+      <div class="sec-lbl">입고 직접 입력</div>
       <div class="card">
-        <div class="fg"><label>구분 *</label>
-          <div class="type-toggle">
-            <button class="tt-btn in" id="tt-in" onclick="setMT('in')">▲ 입고</button>
-            <button class="tt-btn" id="tt-out" onclick="setMT('out')">▼ 출고</button>
-          </div>
-        </div>
-        <div class="fg" id="stock-select-wrap" style="display:none;">
-          <label>출고할 재고 선택 (LOT/BATCH 기준)</label>
-          <select id="m-stock-select" onchange="fillFromStock(this.value)" style="background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:10px 12px;font-size:13px;color:var(--t1);width:100%;outline:none;">
-            <option value="">-- 재고에서 선택 --</option>
-          </select>
-        </div>
         <div class="fg"><label>품목명 *</label><input id="m-name" type="text" placeholder="품목명"/></div>
         <div class="row2">
           <div class="fg"><label>날짜 *</label><input id="m-date" type="date"/></div>
@@ -343,7 +332,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
           </div>
         </div>
         <div class="fg"><label>메모</label><input id="m-note" type="text" placeholder="메모 (선택)"/></div>
-        <button class="submit-btn" onclick="addManual()">등록하기</button>
+        <button class="submit-btn" onclick="addManual()">입고 등록</button>
       </div>
     </div>
 
@@ -359,15 +348,22 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
         <button class="fb" onclick="setF('remain',this)">잔여재고</button>
       </div>
       <div id="log-list"></div>
-      <!-- 잔여재고 일괄 출고 바 -->
-      <div id="remain-bar" style="display:none;position:sticky;bottom:0;background:var(--s1);border-top:0.5px solid var(--b2);padding:12px 0 8px;margin-top:8px;">
+    </div>
+
+    <!-- ═══ SHIPOUT (출고) ═══ -->
+    <div id="pg-shipout" class="pg" style="display:none">
+      <div class="sec-lbl">출고 · 잔여재고에서 선택</div>
+      <input class="srch" id="so-srch" placeholder="품목명 · LOT/BATCH · 거래처 검색..." oninput="renderShipout()"/>
+      <div id="shipout-list"></div>
+      <!-- 일괄 출고 바 -->
+      <div id="shipout-bar" style="display:none;position:sticky;bottom:0;background:var(--s1);border-top:0.5px solid var(--b2);padding:12px 0 8px;margin-top:8px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="font-size:12px;color:var(--t2);">선택 <b id="remain-count" style="color:var(--red);">0</b>건 · <span id="remain-sum" style="color:var(--t2);font-family:var(--mono);">0 KG</span></span>
-          <button onclick="toggleAllRemain()" style="margin-left:auto;font-size:11px;padding:5px 10px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;">전체선택</button>
+          <span style="font-size:12px;color:var(--t2);">선택 <b id="so-count" style="color:var(--red);">0</b>건 · <span id="so-sum" style="color:var(--t2);font-family:var(--mono);">0 KG</span></span>
+          <button onclick="toggleAllShipout()" style="margin-left:auto;font-size:11px;padding:5px 10px;background:var(--s2);border:0.5px solid var(--b2);border-radius:6px;color:var(--t2);cursor:pointer;">전체선택</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="date" id="remain-date" style="flex:1;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:9px 10px;font-size:13px;color:var(--t1);outline:none;">
-          <button onclick="bulkOutConfirm()" style="padding:10px 16px;background:var(--red);color:#fff;border:none;border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">선택 출고</button>
+          <input type="date" id="so-date" style="flex:1;background:var(--s2);border:0.5px solid var(--b2);border-radius:var(--r2);padding:9px 10px;font-size:13px;color:var(--t1);outline:none;">
+          <button onclick="shipoutConfirm()" style="padding:10px 16px;background:var(--red);color:#fff;border:none;border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">선택 출고</button>
         </div>
       </div>
     </div>
@@ -565,11 +561,12 @@ function updateKPIs() {
 function nav(pg, el) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
-  ['scan','manual','log','stock','export'].forEach(p=>{
+  ['scan','manual','shipout','log','stock','export'].forEach(p=>{
     document.getElementById('pg-'+p).style.display = p===pg?'':'none';
   });
   if(pg==='log') renderLog();
   if(pg==='stock') renderStock();
+  if(pg==='shipout') renderShipout();
 }
 
 // ── AUTO CALC QTY ──
@@ -653,7 +650,7 @@ function addManual() {
   const seq = nextSeq();
   records.unshift({
     uid: makeUid(), id: nextId(seq), seq,
-    date, type: mType,
+    date, type: 'in',
     name,
     partner: document.getElementById('m-partner').value.trim(),
     order: (function(){
@@ -677,7 +674,7 @@ function addManual() {
   renderStock();
   ['m-name','m-partner','m-order','m-lot','m-spec','m-netweight','m-qty','m-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-unit').value='PIECES';
-  toast('✓ '+name+' '+qty+'개 '+(mType==='in'?'입고':'출고')+' 등록 완료','g');
+  toast('✓ '+name+' '+qty+'개 입고 등록 완료','g');
 }
 
 // ── SCAN ──
@@ -1013,106 +1010,9 @@ function setF(f, el) {
   fType=f;
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
-  // 잔여재고 필터일 때만 일괄출고 바 표시
-  var bar = document.getElementById('remain-bar');
-  if(bar) {
-    if(f==='remain') {
-      bar.style.display='block';
-      var dt = document.getElementById('remain-date');
-      if(dt && !dt.value) dt.value = today();
-    } else {
-      bar.style.display='none';
-    }
-  }
   renderLog();
-  if(f==='remain') updateRemainBar();
 }
 
-// 체크박스 선택 상태 → 상단 카운트/합계 갱신
-function updateRemainBar() {
-  var chks = document.querySelectorAll('.remain-chk:checked');
-  var cnt = chks.length;
-  var sumNw = 0, wu = 'KG';
-  chks.forEach(function(c){
-    var uid = c.getAttribute('data-uid');
-    var r = records.find(function(x){ return String(x.uid)===String(uid) || String(x.id)===String(uid); });
-    if(r){ sumNw += parseFloat(r.netweight)||0; wu = r.weightunit||'KG'; }
-  });
-  var cE = document.getElementById('remain-count');
-  var sE = document.getElementById('remain-sum');
-  if(cE) cE.textContent = cnt;
-  if(sE) sE.textContent = (Math.round(sumNw*100)/100).toLocaleString()+' '+wu;
-}
-
-// 전체 선택 / 해제 토글
-function toggleAllRemain() {
-  var chks = document.querySelectorAll('.remain-chk');
-  var allChecked = chks.length>0 && Array.prototype.every.call(chks, function(c){ return c.checked; });
-  chks.forEach(function(c){ c.checked = !allChecked; });
-  updateRemainBar();
-}
-
-// 선택 출고 - 확인창
-function bulkOutConfirm() {
-  var chks = document.querySelectorAll('.remain-chk:checked');
-  if(!chks.length){ toast('출고할 재고를 선택해 주세요'); return; }
-  var outDate = (document.getElementById('remain-date')||{}).value || today();
-
-  var targets = [];
-  chks.forEach(function(c){
-    var uid = c.getAttribute('data-uid');
-    var r = records.find(function(x){ return String(x.uid)===String(uid) || String(x.id)===String(uid); });
-    if(r) targets.push(r);
-  });
-  if(!targets.length){ toast('선택 항목을 찾을 수 없습니다'); return; }
-
-  // 확인 목록
-  var lines = targets.map(function(r){
-    return '· '+(r.name||'')+' / '+(r.lot||r.batch||'')+' / '+(r.netweight||'')+' '+(r.weightunit||'KG');
-  }).join('\n');
-  var sumNw = targets.reduce(function(s,r){ return s+(parseFloat(r.netweight)||0); },0);
-
-  var msg = '아래 '+targets.length+'건을 '+outDate+' 날짜로 출고 처리할까요?\n'
-          + '(각 LOT의 입고 수량/중량 전부 출고)\n\n'
-          + lines + '\n\n'
-          + '합계: '+(Math.round(sumNw*100)/100).toLocaleString()+' '+(targets[0].weightunit||'KG');
-  if(!confirm(msg)) return;
-
-  // 1) 먼저 로컬에 모든 출고 레코드 생성 (즉시 화면 반영)
-  var newRecs = [];
-  targets.forEach(function(src){
-    var seq = nextSeq();
-    var rec = {
-      uid: makeUid(), id: nextId(seq), seq: seq,
-      date: outDate, type: 'out',
-      name: src.name||'',
-      partner: src.partner||'',
-      order: src.order||'',
-      lot: src.lot||src.batch||'',
-      batch: src.lot||src.batch||'',
-      spec: src.spec||'',
-      netweight: src.netweight||'',
-      weightunit: src.weightunit||'KG',
-      qty: Number(src.qty)||0,
-      unit: src.unit||'PIECES',
-      source: 'manual',
-      note: '일괄출고',
-      registeredAt: new Date().toLocaleString('ko-KR'),
-      history: []
-    };
-    records.unshift(rec);
-    newRecs.push(rec);
-  });
-
-  save();
-  updateKPIs();
-  renderLog();
-  renderStock();
-  updateRemainBar();
-
-  // 2) 시트에는 하나씩 순차 전송 (밀림/누락 방지)
-  pushBulkSequential(newRecs, outDate);
-}
 
 // 여러 출고 레코드를 시트에 순차적으로 안전하게 전송
 async function pushBulkSequential(recs, outDate) {
@@ -1135,6 +1035,152 @@ async function pushBulkSequential(recs, outDate) {
   } else {
     toast('출고 ' + okCount + '건 성공, ' + failCount + '건 실패 · 🔄 동기화 권장');
   }
+}
+
+// ═══════════ 출고 탭 ═══════════
+// 잔여재고(입고 후 남은 LOT의 입고건)만 체크박스와 함께 표시
+function renderShipout() {
+  var el = document.getElementById('shipout-list');
+  if(!el) return;
+
+  var dt = document.getElementById('so-date');
+  if(dt && !dt.value) dt.value = today();
+
+  // 잔여 중량이 남은 LOT 집합
+  var byItem = computeLotStock();
+  var remainSet = {};
+  Object.keys(byItem).forEach(function(nm){
+    byItem[nm].lots.forEach(function(L){
+      remainSet[nm + '||' + (L.lot||'(LOT없음)')] = true;
+    });
+  });
+
+  var q = (document.getElementById('so-srch')||{}).value||'';
+  var list = records.filter(function(r){
+    if(r.type!=='in') return false;
+    var key = (r.name||'(이름없음)') + '||' + ((r.lot||r.batch||'').trim()||'(LOT없음)');
+    if(!remainSet[key]) return false;
+    if(q){
+      var hay = (r.name||'')+' '+(r.lot||r.batch||'')+' '+(r.partner||'');
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  }).sort(function(a,b){ return (b.seq||0)-(a.seq||0); });
+
+  if(!list.length){
+    el.innerHTML = '<div class="empty">출고할 잔여재고가 없습니다</div>';
+    updateShipoutBar();
+    return;
+  }
+
+  el.innerHTML = list.map(function(r){
+    var nm = r.name||'';
+    var qty = (Number(r.qty)||0).toLocaleString();
+    var unit = r.unit||'';
+    var ruid = r.uid||r.id||'';
+    var date = r.date||'';
+    var lot = r.lot||r.batch||'';
+    var order = r.order||'';
+    var partner = r.partner||'';
+    var nw = r.netweight||'';
+    var wu = r.weightunit||'KG';
+    var lotStr = lot ? ' · LOT/BATCH:'+lot : '';
+    var orderStr = order ? ' · '+order : '';
+    var partnerStr = partner ? ' · '+partner : '';
+    return '<div class="log-item">'
+      +'<input type="checkbox" class="shipout-chk" data-uid="'+ruid+'" onclick="updateShipoutBar()" style="width:18px;height:18px;margin-right:8px;margin-top:2px;flex-shrink:0;accent-color:var(--red);cursor:pointer;">'
+      +'<div class="log-dot in"></div>'
+      +'<div class="log-body">'
+        +'<div class="log-top">'
+          +'<div class="log-name">'+nm+'</div>'
+          +'<div class="log-qty in">'+(nw?nw+' '+wu:qty+unit)+'</div>'
+        +'</div>'
+        +'<div class="log-meta">'+date+lotStr+orderStr+partnerStr+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+  updateShipoutBar();
+}
+
+function updateShipoutBar() {
+  var chks = document.querySelectorAll('.shipout-chk:checked');
+  var cnt = chks.length;
+  var sumNw = 0, wu = 'KG';
+  chks.forEach(function(c){
+    var uid = c.getAttribute('data-uid');
+    var r = records.find(function(x){ return String(x.uid)===String(uid) || String(x.id)===String(uid); });
+    if(r){ sumNw += parseFloat(r.netweight)||0; wu = r.weightunit||'KG'; }
+  });
+  var bar = document.getElementById('shipout-bar');
+  if(bar) bar.style.display = cnt>0 ? 'block' : 'none';
+  var cE = document.getElementById('so-count');
+  var sE = document.getElementById('so-sum');
+  if(cE) cE.textContent = cnt;
+  if(sE) sE.textContent = (Math.round(sumNw*100)/100).toLocaleString()+' '+wu;
+}
+
+function toggleAllShipout() {
+  var chks = document.querySelectorAll('.shipout-chk');
+  var allChecked = chks.length>0 && Array.prototype.every.call(chks, function(c){ return c.checked; });
+  chks.forEach(function(c){ c.checked = !allChecked; });
+  updateShipoutBar();
+}
+
+function shipoutConfirm() {
+  var chks = document.querySelectorAll('.shipout-chk:checked');
+  if(!chks.length){ toast('출고할 재고를 선택해 주세요'); return; }
+  var outDate = (document.getElementById('so-date')||{}).value || today();
+
+  var targets = [];
+  chks.forEach(function(c){
+    var uid = c.getAttribute('data-uid');
+    var r = records.find(function(x){ return String(x.uid)===String(uid) || String(x.id)===String(uid); });
+    if(r) targets.push(r);
+  });
+  if(!targets.length){ toast('선택 항목을 찾을 수 없습니다'); return; }
+
+  var lines = targets.map(function(r){
+    return '· '+(r.name||'')+' / '+(r.lot||r.batch||'')+' / '+(r.netweight||'')+' '+(r.weightunit||'KG');
+  }).join('\n');
+  var sumNw = targets.reduce(function(s,r){ return s+(parseFloat(r.netweight)||0); },0);
+
+  var msg = '아래 '+targets.length+'건을 '+outDate+' 날짜로 출고 처리할까요?\n'
+          + '(각 LOT의 입고 수량/중량 전부 출고)\n\n'
+          + lines + '\n\n'
+          + '합계: '+(Math.round(sumNw*100)/100).toLocaleString()+' '+(targets[0].weightunit||'KG');
+  if(!confirm(msg)) return;
+
+  var newRecs = [];
+  targets.forEach(function(src){
+    var seq = nextSeq();
+    var rec = {
+      uid: makeUid(), id: nextId(seq), seq: seq,
+      date: outDate, type: 'out',
+      name: src.name||'',
+      partner: src.partner||'',
+      order: src.order||'',
+      lot: src.lot||src.batch||'',
+      batch: src.lot||src.batch||'',
+      spec: src.spec||'',
+      netweight: src.netweight||'',
+      weightunit: src.weightunit||'KG',
+      qty: Number(src.qty)||0,
+      unit: src.unit||'PIECES',
+      source: 'manual',
+      note: '출고',
+      registeredAt: new Date().toLocaleString('ko-KR'),
+      history: []
+    };
+    records.unshift(rec);
+    newRecs.push(rec);
+  });
+
+  save();
+  updateKPIs();
+  renderShipout();
+  renderLog();
+  renderStock();
+  pushBulkSequential(newRecs, outDate);
 }
 
 function renderLog() {
@@ -1194,11 +1240,7 @@ function renderLog() {
     var partnerStr = partner ? ' · '+partner : '';
     var specStr = spec ? ' '+spec : '';
     var nwStr = nw ? ' · NET '+nw+' '+wu : '';
-    var chk = (fType==='remain')
-      ? '<input type="checkbox" class="remain-chk" data-uid="'+ruid+'" onclick="event.stopPropagation();updateRemainBar()" style="width:18px;height:18px;margin-right:8px;margin-top:2px;flex-shrink:0;accent-color:var(--red);cursor:pointer;">'
-      : '';
     return '<div class="log-item">'
-      +chk
       +'<div class="log-dot '+tp+'"></div>'
       +'<div class="log-body">'
         +'<div class="log-top">'
