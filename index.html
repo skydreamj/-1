@@ -115,8 +115,12 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .ld-t{font-size:13px;color:var(--t2);}
 .ld-s{font-size:11px;color:var(--t3);}
 .res-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);}
-.multi-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow);transition:opacity 0.15s;}
+.multi-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r2);margin-bottom:6px;box-shadow:var(--shadow);transition:opacity 0.15s;overflow:hidden;}
 .multi-card.excluded{opacity:0.45;}
+.multi-summary{display:flex;align-items:center;gap:9px;padding:10px 12px;cursor:pointer;}
+.multi-summary:active{background:var(--s2);}
+.multi-arrow{color:var(--grn);font-size:11px;flex-shrink:0;}
+.multi-fields{padding:4px 12px 12px;border-top:1px solid var(--b1);}
 .multi-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
 .multi-fields .fg label{color:var(--t2);}
 .res-img{width:100%;max-height:180px;object-fit:cover;display:block;}
@@ -652,6 +656,20 @@ function setHdrDate() {
   document.getElementById('hdr-date').textContent = date+' '+time;
 }
 
+// 규격 정규화: 곱하기 기호를 소문자 x로 통일 + 공백 제거
+// 예) "1.47T * 1360 * 2365" → "1.47Tx1360x2365", "R10.69 x 3025" → "R10.69x3025"
+function normalizeSpec(str) {
+  if(!str) return str;
+  var s = str.toString().trim();
+  // R번호 콤마→점 (R10,69 → R10.69)
+  s = s.replace(/R(\d+),(\d+)/gi, function(m,a,b){ return 'R'+a+'.'+b; });
+  // 곱하기 기호(× * X)를 소문자 x로, 앞뒤 공백 포함해서 치환
+  s = s.replace(/\s*[×*xX]\s*/g, 'x');
+  // 혹시 남은 연속 공백 정리
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  return s;
+}
+
 // 재질 판별: 품목명 기준 (brass=황동, aluminum=알루미늄, other=기타)
 function matOf(name) {
   var n = (name||'').toUpperCase();
@@ -826,7 +844,7 @@ function addManual() {
     })(),
     lot: document.getElementById('m-lot').value.trim(),
     batch: document.getElementById('m-lot').value.trim(),
-    spec: document.getElementById('m-spec').value.trim(),
+    spec: normalizeSpec(document.getElementById('m-spec').value.trim()),
     netweight: document.getElementById('m-netweight').value,
     weightunit: document.getElementById('m-weightunit').value,
     qty, unit: document.getElementById('m-unit').value||'PIECES',
@@ -991,7 +1009,7 @@ function buildMultiItem(img, info, errMsg) {
     partner: info.partner||'',
     order: rawOrder,
     lot: lot,
-    spec: normalizeR(info.spec||''),
+    spec: normalizeSpec(info.spec||''),
     netweight: nwVal,
     weightunit: wu,
     qty: qty,
@@ -1005,16 +1023,25 @@ function renderMultiList() {
   var el = document.getElementById('multi-list');
   document.getElementById('multi-count').textContent = multiItems.length;
   el.innerHTML = multiItems.map(function(it, i){
-    var errBadge = it.error ? '<span style="font-size:10px;color:var(--red);background:var(--red2);padding:2px 6px;border-radius:4px;margin-left:6px;">인식실패</span>' : '';
+    var errBadge = it.error ? '<span style="font-size:9px;color:var(--red);background:var(--red2);padding:1px 5px;border-radius:4px;margin-left:5px;">인식실패</span>' : '';
+    // 한 줄 요약: 품목명 · 중량 · 수량
+    var nmShort = it.name || '(품목명 없음)';
+    var wStr = it.netweight ? (it.netweight+' '+(it.weightunit||'KG')) : '';
+    var qStr = it.qty ? (it.qty+' '+(it.unit||'')) : '';
+    var summary = [wStr, qStr].filter(Boolean).join(' · ');
     return '<div class="multi-card'+(it.include?'':' excluded')+'" id="mcard-'+i+'">'
-      +'<div class="multi-card-hdr">'
-        +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">'
-          +'<input type="checkbox" '+(it.include?'checked':'')+' onchange="toggleMultiInclude('+i+',this.checked)" style="width:18px;height:18px;accent-color:var(--grn);cursor:pointer;">'
-          +'<span style="font-size:13px;font-weight:700;">#'+(i+1)+'</span>'+errBadge
-        +'</label>'
-        +(it.img?'<img src="'+it.img+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--b1);">':'')
+      // 요약 줄 (탭하면 펼침)
+      +'<div class="multi-summary" onclick="toggleMultiEdit('+i+')">'
+        +'<input type="checkbox" '+(it.include?'checked':'')+' onclick="event.stopPropagation()" onchange="toggleMultiInclude('+i+',this.checked)" style="width:18px;height:18px;accent-color:var(--grn);cursor:pointer;flex-shrink:0;">'
+        +'<span class="multi-arrow" id="marrow-'+i+'">▸</span>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+nmShort+errBadge+'</div>'
+          +(summary?'<div style="font-size:11px;color:var(--t2);font-family:var(--mono);margin-top:2px;">'+summary+(it.lot?' · '+it.lot:'')+'</div>':'')
+        +'</div>'
+        +(it.img?'<img src="'+it.img+'" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--b1);flex-shrink:0;">':'')
       +'</div>'
-      +'<div class="multi-fields">'
+      // 수정 필드 (기본 숨김)
+      +'<div class="multi-fields" id="mfields-'+i+'" style="display:none;">'
         +mfield(i,'name','품목명','text')
         +mfield(i,'spec','규격','text')
         +'<div class="row2">'+mfield(i,'lot','LOT/BATCH','text')+mfield(i,'order','Order#','text')+'</div>'
@@ -1024,6 +1051,20 @@ function renderMultiList() {
     +'</div>';
   }).join('');
   updateMultiSummary();
+}
+
+// 카드 펼침/접기
+function toggleMultiEdit(i) {
+  var fields = document.getElementById('mfields-'+i);
+  var arrow = document.getElementById('marrow-'+i);
+  if(!fields) return;
+  if(fields.style.display === 'none') {
+    fields.style.display = 'block';
+    if(arrow) arrow.textContent = '▾';
+  } else {
+    fields.style.display = 'none';
+    if(arrow) arrow.textContent = '▸';
+  }
 }
 
 function mfield(i, key, label, type) {
@@ -1126,15 +1167,21 @@ async function callAI(b64, mime) {
   + '     Examples: R010,50x3000 → name="ELVALHALCOR BRASS ROD R10.50", spec="R10.50x3000"\n'
   + '     NET WEIGHT for ELVALHALCOR: always INTEGER (no decimal). If you see 1202.0 → use 1202\n'
   + '     If spec not clearly visible in DESCRIPTION field → set null, do not guess.\n'
-  + '   - ARCONIC brand → "ARCONIC ALUMINUM SHEET " + thickness with T suffix (e.g. "ARCONIC ALUMINUM SHEET 1.5T" or "ARCONIC ALUMINUM SHEET 2.8T")\n'
-  + '     Thickness is the FIRST number in dimension string (before first +). Common: 1.5T, 2.8T. Must include T suffix.\n'
+  + '   - ARCONIC brand → "ARCONIC ALUMINUM SHEET " + thickness with T suffix (e.g. "ARCONIC ALUMINUM SHEET 1.47T", "ARCONIC ALUMINUM SHEET 1.5T", "ARCONIC ALUMINUM SHEET 2.7T", "ARCONIC ALUMINUM SHEET 2.8T")\\n'
+  + '     Thickness is the FIRST number in the dimension string (before the first + or -). Copy ALL its digits EXACTLY, including two-decimal values. Do NOT round or shorten.\\n'
+  + '     CRITICAL: thickness can have TWO decimals. "1.47+.045/..." means 1.47T (NOT 1.5T, NOT 1.4T). "2.75+..." means 2.75T. Keep every digit before the first +/-.\\n'
+  + '     CRITICAL: 2.7 and 2.8 look similar - read the digit carefully (7=2.7T, 8=2.8T). Never default to 2.8 when unsure.\\n'
+  + '     Common thicknesses: 1.47T, 1.5T, 2.7T, 2.8T. Must include T suffix.\\n'
   + '2. PARTNER (partner): Short manufacturer name only:\n'
   + '   - ASBW → "ASBW"\n'
   + '   - ELVALHALCOR or ELVALHAL → "ELVALHALCOR SA"\n'
   + '   - ARCONIC (any variant including Kunshan, China) → "ARCONIC"\n'
   + '3. ORDER# (order): Look carefully for text starting with "GOPO" followed by numbers (e.g. GOPO 25/41, GOPO-25/41, GOPO25/41).\n'
-  + '   - Search entire tag for GOPO pattern. It may appear as "Our Order No.", "Order No.", "P.O.", or just standalone text.\n'
-  + '   - ELVALHALCOR tags: ORDER NR is usually located directly below "CUSTOMER: GAONMETAL" text. Look there first.\n'
+  + '   - The GOPO value is the ORDER# we want. It is a SEPARATE small code, NOT the big "Our Order No." number.\\n'
+  + '   - ARCONIC tags: GOPO is a small grey text located INSIDE the "Customer PO No. / 顾客订单号" box, printed directly BELOW the barcode in that box. Zoom into that area and read it. It looks like "GOPO-25/36" or "GOPO 25/36".\\n'
+  + '     CRITICAL for ARCONIC: The large number labeled "Our Order No. / 生产订单号" (e.g. 1062731-2) is the factory order, NOT the GOPO. NEVER use "Our Order No." as the order value. Only the GOPO code counts.\\n'
+  + '   - ELVALHALCOR tags: GOPO is usually directly below "CUSTOMER: GAONMETAL" text. Look there first.\\n'
+  + '   - The GOPO text may be faint, small, or grey. Look carefully near barcodes and PO/order boxes before concluding it is absent.\\n'
   + '   - GOPO format examples: GOPO 25/41, GOPO-24/50, GOPO25/41. Always normalize to "GOPO 숫자/숫자" format (e.g. "GOPO 25/41").\n'
   + '   - Normalization rule: remove dashes/spaces between GOPO and numbers, always use single space: "GOPO 25/41" not "GOPO-25/41" or "GOPO25/41"\n'
   + '   - If you see GOPO anywhere on the tag, extract it. If NO GOPO found anywhere → null.\n'
@@ -1154,11 +1201,13 @@ async function callAI(b64, mime) {
   + '   - If no clearly labeled LOT NR or BATCH NR found → set null. Do not guess.\n'
   + '     Dimension string pattern: thickness+tol/-tol * width,decimal+tol/-tol * length+tol/-tol\n'
   + '     Common sizes for reference (use these if dimension string is unclear):\n'
-  + '       If DESCRIPTION contains "1.5" or "1.5+" → likely 1.5Tx1360x2365\n'
-  + '       If DESCRIPTION contains "2.8" or "2.8+" → likely 2.8Tx1416x2484\n'
+  + '     Width/length reference (ONLY if width/length digits are unclear - never override a clearly readable thickness):\\n'
+  + '       thickness 1.47 or 1.5 → width~1360 length~2365 ; thickness 2.7 or 2.8 → width~1416 length~2484\\n'
   + '     But ALWAYS try to read exact dimensions first. Extract: number before first +/- for each of 3 dimensions.\n'
   + '     Example: "1.5+.045/-.045*1360,0+1/-1*2365+2/-2" → 1.5T x 1360 x 2365 → "1.5Tx1360x2365"\n'
+  + '     Example: "1.47+.045/-.045*1360.0+1/-1*2365+2/-2" → 1.47T x 1360 x 2365 → "1.47Tx1360x2365" (keep 1.47, do NOT round to 1.5)\\n'
   + '     Example: "2.8+.045/-.045*1416,0+1/-1*2484+2/-2" → 2.8T x 1416 x 2484 → "2.8Tx1416x2484"\n'
+  + '     Example: "2.7+.045/-.045*1416,0+1/-1*2484+2/-2" → 2.7T x 1416 x 2484 → "2.7Tx1416x2484" (note: 2.7 NOT 2.8)\\n'
   + '     Output format: THICKNESSTxWIDTHxLENGTH (T suffix, x separator, no spaces)\n'
   + '     Convert "R010,69x3025" → "R10.69x3025" (remove leading zeros, replace comma with dot). Ignore all other text.\n'
   + '   - ASBW tags: spec is in "DIMENSIONS (mm)" field. Read ONLY from that field (e.g. R10.50x3000, R10.69x3000).\n'
@@ -1273,7 +1322,7 @@ function showRes(info) {
   var nm = normalizeR(info.name||'');
   nm = nm.replace(/(\s+R\d+\.\d+)x\d+/i, function(m, r) { return r; });
   setVal('s-name', nm);
-  var sp = normalizeR(info.spec||'');
+  var sp = normalizeSpec(info.spec||'');
   info.spec = sp;
   setVal('s-date', today());
   var rawOrder = info.order||'';
@@ -1338,7 +1387,7 @@ function regScan(forceType) {
     })(),
     lot: document.getElementById('s-lot').value.trim(),
     batch: document.getElementById('s-lot').value.trim(),
-    spec: document.getElementById('s-spec').value.trim(),
+    spec: normalizeSpec(document.getElementById('s-spec').value.trim()),
     netweight: document.getElementById('s-netweight').value,
     weightunit: document.getElementById('s-weightunit').value,
     qty, unit: document.getElementById('s-unit').value||'PIECES',
@@ -1705,7 +1754,7 @@ function saveEdit() {
     order: document.getElementById('e-order').value.trim(),
     lot: document.getElementById('e-lot').value.trim(),
     batch: document.getElementById('e-lot').value.trim(),
-    spec: document.getElementById('e-spec').value.trim(),
+    spec: normalizeSpec(document.getElementById('e-spec').value.trim()),
     netweight: document.getElementById('e-netweight').value,
     weightunit: document.getElementById('e-weightunit') ? document.getElementById('e-weightunit').value : 'KG',
     qty: parseInt(document.getElementById('e-qty').value),
