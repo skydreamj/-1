@@ -102,6 +102,10 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 .ld-t{font-size:13px;color:var(--t2);}
 .ld-s{font-size:11px;color:var(--t3);}
 .res-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);}
+.multi-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow);transition:opacity 0.15s;}
+.multi-card.excluded{opacity:0.45;}
+.multi-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.multi-fields .fg label{color:var(--t2);}
 .res-img{width:100%;max-height:180px;object-fit:cover;display:block;}
 .res-body{padding:14px;}
 .res-lbl{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--t3);text-transform:uppercase;margin-bottom:10px;}
@@ -266,13 +270,27 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
     <!-- ═══ SCAN ═══ -->
     <div id="pg-scan" class="pg">
       <label class="cam-zone" id="cam-zone">
-        <input type="file" accept="image/*" onchange="handleFile(event)" id="file-inp"/>
+        <input type="file" accept="image/*" multiple onchange="handleFile(event)" id="file-inp"/>
         <div class="cam-ic"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
         <div class="cam-lbl">카메라로 태그 촬영</div>
-        <div class="cam-sub">갤러리 선택도 가능 · JPG / PNG</div>
+        <div class="cam-sub">여러 장 선택 가능 · JPG / PNG</div>
       </label>
       <div id="scan-ld" style="display:none">
-        <div class="ld-box"><div class="spin"></div><div class="ld-t" id="ld-model-txt">AI 분석 중...</div><div class="ld-s">날짜 · 거래처 · 규격 · 중량 추출 중</div></div>
+        <div class="ld-box"><div class="spin"></div><div class="ld-t" id="ld-model-txt">AI 분석 중...</div><div class="ld-s" id="ld-sub-txt">날짜 · 거래처 · 규격 · 중량 추출 중</div></div>
+      </div>
+      <!-- 다중 스캔 결과 목록 -->
+      <div id="multi-res" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="sec-lbl" style="margin-bottom:0;">인식 결과 <span id="multi-count" style="color:var(--grn);">0</span>건 · 확인 후 일괄 등록</div>
+          <button class="btn-ghost" onclick="resetScan()" style="padding:6px 10px;">↺ 초기화</button>
+        </div>
+        <div id="multi-list"></div>
+        <div style="position:sticky;bottom:0;background:var(--s1);border-top:1px solid var(--b1);padding:12px 0 8px;margin-top:8px;box-shadow:0 -2px 8px rgba(0,0,0,0.04);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:12px;color:var(--t2);">등록 대상 <b id="multi-sel-count" style="color:var(--grn);">0</b>건 · 합계 <span id="multi-sel-sum" style="font-family:var(--mono);color:var(--t2);">0 KG</span></span>
+          </div>
+          <button class="submit-btn" onclick="registerMultiAll()" style="margin-top:0;">전체 입고 등록</button>
+        </div>
       </div>
       <div id="scan-err" style="display:none" class="err-box">
         <div class="err-t" id="scan-err-t">인식 실패</div>
@@ -799,7 +817,18 @@ function compressImage(dataUrl, maxSize, quality) {
 }
 
 function handleFile(e) {
-  const file = e.target.files[0]; if(!file) return;
+  const files = Array.from(e.target.files||[]);
+  if(!files.length) return;
+  if(files.length === 1) {
+    handleSingleFile(files[0]);
+    e.target.value='';
+  } else {
+    handleMultiFiles(files);
+    e.target.value='';
+  }
+}
+
+function handleSingleFile(file) {
   const reader = new FileReader();
   reader.onload = async ev => {
     const compressed = await compressImage(ev.target.result, 1200, 0.75);
@@ -808,6 +837,7 @@ function handleFile(e) {
     document.getElementById('cam-zone').style.display='none';
     document.getElementById('scan-err').style.display='none';
     document.getElementById('scan-res').style.display='none';
+    document.getElementById('multi-res').style.display='none';
     document.getElementById('scan-ld').style.display='block';
     document.getElementById('pre-img').src = ev.target.result;
     try {
@@ -821,9 +851,208 @@ function handleFile(e) {
       document.getElementById('scan-err').style.display='block';
       showRes({name:'',qty:1,unit:'개',date:today(),partner:'',spec:'',weight:'',type:'in',note:'',tags:[]});
     }
-    e.target.value='';
   };
   reader.readAsDataURL(file);
+}
+
+// ── 다중 스캔 ──
+var multiItems = [];  // {img, name, date, partner, order, lot, spec, netweight, weightunit, qty, unit, include, error}
+
+function readFileAsDataURL(file) {
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(ev){ resolve(ev.target.result); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleMultiFiles(files) {
+  document.getElementById('cam-zone').style.display='none';
+  document.getElementById('scan-err').style.display='none';
+  document.getElementById('scan-res').style.display='none';
+  document.getElementById('multi-res').style.display='none';
+  document.getElementById('scan-ld').style.display='block';
+
+  var ldModel = document.getElementById('ld-model-txt');
+  var ldSub = document.getElementById('ld-sub-txt');
+
+  multiItems = [];
+  for (var i = 0; i < files.length; i++) {
+    if(ldModel) ldModel.textContent = 'AI 분석 중... ('+(i+1)+'/'+files.length+')';
+    if(ldSub) ldSub.textContent = files[i].name || '';
+    try {
+      var dataUrl = await readFileAsDataURL(files[i]);
+      var compressed = await compressImage(dataUrl, 1200, 0.75);
+      var b64 = compressed.split(',')[1];
+      var info = {};
+      var errMsg = '';
+      try {
+        info = await callAI(b64, 'image/jpeg');
+      } catch(aiErr) {
+        errMsg = aiErr.message || '인식 실패';
+        info = {};
+      }
+      multiItems.push(buildMultiItem(dataUrl, info, errMsg));
+    } catch(e) {
+      multiItems.push(buildMultiItem('', {}, e.message||'파일 오류'));
+    }
+  }
+
+  document.getElementById('scan-ld').style.display='none';
+  renderMultiList();
+  document.getElementById('multi-res').style.display='block';
+  if(ldModel) ldModel.textContent = 'AI 분석 중...';
+}
+
+// AI 인식 결과를 정규화해서 항목 객체로 변환 (showRes의 정규화 로직 재사용)
+function buildMultiItem(img, info, errMsg) {
+  function normalizeR(str){ if(!str) return str; return str.replace(/R(\d+),(\d+)/gi,function(m,a,b){return 'R'+a+'.'+b;}); }
+  function stripCountryCode(str){ if(!str) return str; return str.toString().trim().replace(/[-\s]*KR$/i,'').trim(); }
+
+  var nm = normalizeR(info.name||'');
+  nm = nm.replace(/(\s+R\d+\.\d+)x\d+/i, function(m,r){ return r; });
+
+  var rawOrder = info.order||'';
+  if(rawOrder.toUpperCase().startsWith('GOPO')) rawOrder = rawOrder.replace(/^GOPO[-\s]*/i,'GOPO ').replace(/\s+/,' ').trim();
+
+  var lot = stripCountryCode(normalizeR(info.lot || (!info.lot && info.batch ? info.batch : '')));
+
+  var nwVal = info.netweight ? String(info.netweight) : '';
+  if(nwVal.endsWith('.0')) nwVal = nwVal.slice(0,-2);
+  if(nwVal && !isNaN(nwVal)) nwVal = String(Math.round(parseFloat(nwVal)));
+
+  var wu = (info.weightunit||'KG').toUpperCase().includes('LBS') ? 'LBS' : 'KG';
+  var units = ['PIECES','SHEETS','COILS','ROLLS','EA'];
+  var rawUnit = (info.unit||'PIECES').toUpperCase();
+  var matchedUnit = units.find(function(u){ return rawUnit.includes(u); }) || 'PIECES';
+
+  var qty = parseInt(info.qty)||0;
+  var nwNum = parseFloat(nwVal)||0;
+  if((!qty || qty<=1) && nwNum>0) {
+    var divisor = 2.18714;
+    if((nm||'').toUpperCase().includes('R10.50')) divisor = 2.11008;
+    qty = Math.ceil(nwNum/divisor);
+  }
+  if(!qty) qty = 1;
+
+  return {
+    img: img,
+    name: nm,
+    date: today(),
+    partner: info.partner||'',
+    order: rawOrder,
+    lot: lot,
+    spec: normalizeR(info.spec||''),
+    netweight: nwVal,
+    weightunit: wu,
+    qty: qty,
+    unit: matchedUnit,
+    include: !errMsg,   // 인식 실패한 건 기본 제외
+    error: errMsg||''
+  };
+}
+
+function renderMultiList() {
+  var el = document.getElementById('multi-list');
+  document.getElementById('multi-count').textContent = multiItems.length;
+  el.innerHTML = multiItems.map(function(it, i){
+    var errBadge = it.error ? '<span style="font-size:10px;color:var(--red);background:var(--red2);padding:2px 6px;border-radius:4px;margin-left:6px;">인식실패</span>' : '';
+    return '<div class="multi-card'+(it.include?'':' excluded')+'" id="mcard-'+i+'">'
+      +'<div class="multi-card-hdr">'
+        +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">'
+          +'<input type="checkbox" '+(it.include?'checked':'')+' onchange="toggleMultiInclude('+i+',this.checked)" style="width:18px;height:18px;accent-color:var(--grn);cursor:pointer;">'
+          +'<span style="font-size:13px;font-weight:700;">#'+(i+1)+'</span>'+errBadge
+        +'</label>'
+        +(it.img?'<img src="'+it.img+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--b1);">':'')
+      +'</div>'
+      +'<div class="multi-fields">'
+        +mfield(i,'name','품목명','text')
+        +'<div class="row2">'+mfield(i,'lot','LOT/BATCH','text')+mfield(i,'order','Order#','text')+'</div>'
+        +'<div class="row2">'+mfield(i,'netweight','NET중량','number')+mfield(i,'qty','수량','number')+'</div>'
+        +'<div class="row2">'+mfield(i,'partner','거래처','text')+mfield(i,'date','날짜','date')+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+  updateMultiSummary();
+}
+
+function mfield(i, key, label, type) {
+  var v = multiItems[i][key]||'';
+  return '<div class="fg" style="margin-bottom:8px;">'
+    +'<label style="font-size:11px;">'+label+'</label>'
+    +'<input type="'+type+'" value="'+String(v).replace(/"/g,'&quot;')+'" '
+    +(type==='number'?'step="0.001" min="0" ':'')
+    +'oninput="updateMultiField('+i+',\''+key+'\',this.value)" '
+    +'style="padding:8px 10px;font-size:13px;">'
+  +'</div>';
+}
+
+function updateMultiField(i, key, val) {
+  if(multiItems[i]) { multiItems[i][key] = val; if(key==='netweight') updateMultiSummary(); }
+}
+
+function toggleMultiInclude(i, checked) {
+  if(multiItems[i]) {
+    multiItems[i].include = checked;
+    var card = document.getElementById('mcard-'+i);
+    if(card) card.className = 'multi-card'+(checked?'':' excluded');
+    updateMultiSummary();
+  }
+}
+
+function updateMultiSummary() {
+  var cnt = 0, sum = 0, wu = 'KG';
+  multiItems.forEach(function(it){
+    if(it.include){ cnt++; sum += parseFloat(it.netweight)||0; wu = it.weightunit||'KG'; }
+  });
+  document.getElementById('multi-sel-count').textContent = cnt;
+  document.getElementById('multi-sel-sum').textContent = (Math.round(sum*100)/100).toLocaleString()+' '+wu;
+}
+
+function registerMultiAll() {
+  var targets = multiItems.filter(function(it){ return it.include; });
+  if(!targets.length){ toast('등록할 항목을 선택해 주세요'); return; }
+  // 필수값 체크
+  var invalid = targets.filter(function(it){ return !(it.name||'').trim() || !(parseInt(it.qty)>0); });
+  if(invalid.length){ toast(invalid.length+'건에 품목명/수량이 없습니다'); return; }
+
+  if(!confirm(targets.length+'건을 입고 등록할까요?')) return;
+
+  var newRecs = [];
+  targets.forEach(function(it){
+    var seq = nextSeq();
+    var o = (it.order||'').trim();
+    if(o.toUpperCase().startsWith('GOPO')) o = o.replace(/^GOPO[-\s]*/i,'GOPO ').trim();
+    var rec = {
+      uid: makeUid(), id: nextId(seq), seq: seq,
+      date: it.date||today(), type: 'in',
+      name: (it.name||'').trim(),
+      partner: (it.partner||'').trim(),
+      order: o,
+      lot: (it.lot||'').trim(),
+      batch: (it.lot||'').trim(),
+      spec: (it.spec||'').trim(),
+      netweight: it.netweight||'',
+      weightunit: it.weightunit||'KG',
+      qty: parseInt(it.qty)||0,
+      unit: it.unit||'PIECES',
+      source: 'scan',
+      note: '일괄스캔',
+      registeredAt: new Date().toLocaleString('ko-KR'),
+      history: []
+    };
+    records.unshift(rec);
+    newRecs.push(rec);
+  });
+
+  save();
+  updateKPIs();
+  renderLog();
+  renderStock();
+  resetScan();
+  pushBulkSequential(newRecs, today());
+  toast('✓ '+targets.length+'건 입고 등록','g');
 }
 
 function extractJSON(raw) {
@@ -1081,6 +1310,9 @@ function resetScan() {
   document.getElementById('scan-res').style.display='none';
   document.getElementById('scan-err').style.display='none';
   document.getElementById('scan-ld').style.display='none';
+  var mr = document.getElementById('multi-res');
+  if(mr) mr.style.display='none';
+  multiItems = [];
   document.getElementById('cam-zone').style.display='flex';
 }
 
