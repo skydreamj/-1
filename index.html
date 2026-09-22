@@ -968,6 +968,7 @@ function renderMultiList() {
       +'</div>'
       +'<div class="multi-fields">'
         +mfield(i,'name','품목명','text')
+        +mfield(i,'spec','규격','text')
         +'<div class="row2">'+mfield(i,'lot','LOT/BATCH','text')+mfield(i,'order','Order#','text')+'</div>'
         +'<div class="row2">'+mfield(i,'netweight','NET중량','number')+mfield(i,'qty','수량','number')+'</div>'
         +'<div class="row2">'+mfield(i,'partner','거래처','text')+mfield(i,'date','날짜','date')+'</div>'
@@ -1696,11 +1697,13 @@ function computeLotStock() {
       lotMap[key] = {
         name: nm, lot: lot,
         partner: r.partner || '',
+        order: r.order || '',
         wunit: r.weightunit || 'KG',
         unit: r.unit || 'PIECES',
         inNw: 0, outNw: 0, inQty: 0, outQty: 0
       };
     }
+    if (!lotMap[key].order && r.order) lotMap[key].order = r.order;
     var nw = parseFloat(r.netweight) || 0;
     var q  = Number(r.qty) || 0;
     if (r.type === 'in') { lotMap[key].inNw += nw; lotMap[key].inQty += q; }
@@ -1726,7 +1729,7 @@ function computeLotStock() {
       byItem[L.name].lots.push({
         lot: L.lot, remNw: remNw, remQty: remQty,
         inNw: L.inNw, outNw: L.outNw, inQty: L.inQty, outQty: L.outQty,
-        wunit: L.wunit, unit: L.unit, partner: L.partner
+        wunit: L.wunit, unit: L.unit, partner: L.partner, order: L.order
       });
       byItem[L.name].sumNw  += remNw;
       byItem[L.name].sumQty += remQty;
@@ -1813,11 +1816,12 @@ function toggleStockDetail(el) {
       + lots.map(function(L){
           var remNwStr = L.remNw.toLocaleString()+' '+L.wunit;
           var outInfo = L.outNw>0 ? ('입고 '+Math.round(L.inNw*100)/100+' − 출고 '+Math.round(L.outNw*100)/100) : ('입고 '+Math.round(L.inNw*100)/100+' (출고 없음)');
+          var orderStr = L.order ? '<span style="color:var(--blu);"> · '+L.order+'</span>' : '';
           return '<div class="stock-detail-item">'
             +'<div class="sd-left">'
               +'<span class="sd-dot in"></span>'
               +'<div>'
-                +'<div class="sd-line1">'+L.lot+'</div>'
+                +'<div class="sd-line1">'+L.lot+orderStr+'</div>'
                 +'<div class="sd-line2">'+outInfo+' '+L.wunit+(L.partner?' · '+L.partner:'')+'</div>'
               +'</div>'
             +'</div>'
