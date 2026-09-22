@@ -1379,19 +1379,19 @@ function renderShipout() {
   var dt = document.getElementById('so-date');
   if(dt && !dt.value) dt.value = today();
 
-  // 잔여 중량이 남은 LOT 집합
+  // 잔여 중량이 남은 LOT 집합 (품목||LOT||order 기준)
   var byItem = computeLotStock();
   var remainSet = {};
   Object.keys(byItem).forEach(function(nm){
     byItem[nm].lots.forEach(function(L){
-      remainSet[nm + '||' + (L.lot||'(LOT없음)')] = true;
+      remainSet[nm + '||' + (L.lot||'(LOT없음)') + '||' + (L.order||'')] = true;
     });
   });
 
   var q = (document.getElementById('so-srch')||{}).value||'';
   var list = records.filter(function(r){
     if(r.type!=='in') return false;
-    var key = (r.name||'(이름없음)') + '||' + ((r.lot||r.batch||'').trim()||'(LOT없음)');
+    var key = (r.name||'(이름없음)') + '||' + ((r.lot||r.batch||'').trim()||'(LOT없음)') + '||' + ((r.order||'').trim());
     if(!remainSet[key]) return false;
     if(q){
       var hay = (r.name||'')+' '+(r.lot||r.batch||'')+' '+(r.partner||'');
@@ -1522,14 +1522,14 @@ function renderLog() {
   if(!records || !records.length) { logEl.innerHTML='<div class="empty">내역이 없습니다</div>'; return; }
   const q = (document.getElementById('srch')||{}).value||'';
 
-  // '잔여재고' 필터용: 잔여 중량이 남은 LOT(품목||LOT) 집합 계산
+  // '잔여재고' 필터용: 잔여 중량이 남은 LOT(품목||LOT||order) 집합 계산
   var remainSet = null;
   if(fType==='remain') {
     var byItem = computeLotStock();
     remainSet = {};
     Object.keys(byItem).forEach(function(nm){
       byItem[nm].lots.forEach(function(L){
-        remainSet[nm + '||' + (L.lot||'(LOT없음)')] = true;
+        remainSet[nm + '||' + (L.lot||'(LOT없음)') + '||' + (L.order||'')] = true;
       });
     });
   }
@@ -1541,9 +1541,9 @@ function renderLog() {
     if(fType==='scan') return r.source==='scan';
     if(fType==='mod') return r.history&&r.history.length>0;
     if(fType==='remain') {
-      // 입고 건이면서, 해당 LOT이 아직 잔여가 남아있는 경우만
+      // 입고 건이면서, 해당 LOT+order가 아직 잔여가 남아있는 경우만
       if(r.type!=='in') return false;
-      var key = (r.name||'(이름없음)') + '||' + ((r.lot||r.batch||'').trim()||'(LOT없음)');
+      var key = (r.name||'(이름없음)') + '||' + ((r.lot||r.batch||'').trim()||'(LOT없음)') + '||' + ((r.order||'').trim());
       return !!remainSet[key];
     }
     return true;
@@ -1688,22 +1688,22 @@ function saveEdit() {
 // LOT/BATCH 기준 잔여 재고 계산 (입고 - 출고), 품목별로 그룹핑
 // 반환: { 품목명: { partner, wunit, unit, lots: [ {lot, remNw, remQty, inNw, outNw, inQty, outQty} ], sumNw, sumQty, inNwTotal } }
 function computeLotStock() {
-  var lotMap = {};   // key = 품목명||lot
+  var lotMap = {};   // key = 품목명||lot||order
   records.forEach(function(r) {
     var nm = r.name || '(이름없음)';
     var lot = (r.lot || r.batch || '').trim() || '(LOT없음)';
-    var key = nm + '||' + lot;
+    var ord = (r.order || '').trim();
+    var key = nm + '||' + lot + '||' + ord;
     if (!lotMap[key]) {
       lotMap[key] = {
         name: nm, lot: lot,
         partner: r.partner || '',
-        order: r.order || '',
+        order: ord,
         wunit: r.weightunit || 'KG',
         unit: r.unit || 'PIECES',
         inNw: 0, outNw: 0, inQty: 0, outQty: 0
       };
     }
-    if (!lotMap[key].order && r.order) lotMap[key].order = r.order;
     var nw = parseFloat(r.netweight) || 0;
     var q  = Number(r.qty) || 0;
     if (r.type === 'in') { lotMap[key].inNw += nw; lotMap[key].inQty += q; }
